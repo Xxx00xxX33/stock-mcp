@@ -1,3 +1,1 @@
-"""
-服务器模块
-"""
+# src/server package initializer

@@ -1,922 +1,624 @@
+# Stock Tool MCP Server
+
 <div align="center">
 
-# 📈 Stock MCP Server
+**[English](#english-documentation) | 中文文档**
 
-> **基于 Model Context Protocol 的智能股票数据服务**  
-> 一站式获取 A股/港股/美股实时数据 + AI 驱动的深度分析
-
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
-[快速开始](#-快速开始) • [功能特性](#-核心功能) • [API 文档](docs/API.md) • [配置指南](docs/GUIDE.md)
+一个强大且全面的模型上下文协议 (MCP) 服务器，专注于金融市场数据、技术分析和基本面研究。
 
 </div>
 
 ---
 
-## ✨ 为什么选择 Stock MCP？
+## 🇨🇳 中文文档
 
-- 🌐 **全球市场覆盖** - 一键接入 A股、港股、美股数据
-- 🤖 **AI 智能分析** - 新闻情绪分析、深度研究报告、智能搜索
-- 🚀 **开箱即用** - Docker 一键部署，5分钟启动服务
-- 📊 **多数据源融合** - AKShare、Tushare、yFinance、Finnhub 智能聚合
-- 🏛️ **宏观经济数据** - GDP、CPI、PMI、货币供应量等全面覆盖
-- 🧪 **快速测试工具** - 内置接口测试页面，可视化API调试
-- 💾 **高性能缓存** - Redis 加速 + 自动降级，稳定可靠
+### 📖 项目简介
 
----
+本项目旨在为 AI Agent（如 Claude, Cursor, 通义千问等）赋予专业级的股市分析能力，打通大语言模型与实时金融数据之间的桥梁。
 
-## 🚀 快速开始
+通过 **MCP (Model Context Protocol)** 协议，AI 可以直接调用本服务器提供的金融工具，实现：
+- 📊 实时行情查询
+- 📈 技术指标计算
+- 💰 基本面分析
+- 📰 新闻资讯获取
+- 🔍 深度研究报告
 
-```bash
-# 1. 克隆项目
-git clone git@github.com:huweihua123/stock-mcp.git && cd stock-mcp
+### 🚀 核心功能
 
-# 2. 配置环境变量（必需：TUSHARE_TOKEN）
-cp .env.example .env && vim .env
+#### 1. 多源市场数据融合
 
-# 3. 一键启动
-docker-compose up -d
+无需纠结使用哪个 API。本服务器内置智能 **Adapter Manager（适配器管理器）**，可自动路由请求并在多个数据源之间进行故障转移：
 
-# 4. 访问服务
-open http://localhost:9998/docs
+- **美股**: Yahoo Finance, Finnhub
+- **A股**: Akshare, Tushare, Baostock
+- **加密货币**: CCXT (Binance, OKX 等)
+- **外汇与指数**: Yahoo Finance
 
-# 5. 快速测试页面（可视化API调试）
-open http://localhost:9998/
-```
+#### 2. 专业技术分析
 
-> 💡 **查看样例报告**: 想了解 AI 分析能力?查看 [样例报告](docs/sample-reports/) 了解完整的技术分析和基本面报告格式
+内置量化分析引擎，提供的不仅仅是原始数字：
 
-**🎯 5分钟体验核心功能：**
-```bash
-# 查询茅台历史价格及AI分析
-curl "http://localhost:9998/stock/price?symbol=600519&start_date=2024-01-01&end_date=2025-01-01"
+- **技术指标**: SMA/EMA, RSI, MACD, 布林带 (Bollinger Bands), KDJ, ATR 等
+- **形态识别**: 自动检测 K 线形态（如十字星 Doji, 锤头线 Hammer, 吞没形态 Engulfing）
+- **支撑与压力**: 动态计算关键价格位
+- **筹码分布 (Volume Profile)**: 分析成交量分布以识别价值区域
 
-# 获取苹果实时行情
-curl "http://localhost:9998/api/stock/news?symbol=AAPL"
+#### 3. 深度基本面研究
 
-# 查询股票基本面数据
-curl "http://localhost:9998/api/stock/fundamental?symbol=000008&curr_date=2025-06-01"
+自动化的金融分析师能力：
 
-# 批量查询多只股票
-curl -X POST "http://localhost:9998/api/stock/quotes" \
-  -H "Content-Type: application/json" \
-  -d '{"symbols": ["AAPL", "TSLA", "MSFT"]}'
+- **财务报表**: 资产负债表、利润表、现金流量表
+- **健康度打分**: 基于盈利能力、偿债能力、成长性和估值的 0-100 分独家健康度评分
+- **关键比率**: PE, PB, ROE, ROA, 负债权益比等
 
-# 查询宏观经济数据
-curl "http://localhost:9998/api/macro/gdp?start_date=2020-01-01&end_date=2024-12-31"
-```
+#### 4. 智能聚合工具
 
-> 🎨 **可视化测试**: 访问 http://localhost:9998/ 使用内置的接口测试工具，无需命令行即可快速测试所有API
+专为 LLM 上下文窗口优化：
 
----
+- `perform_deep_research`: 一键获取指定标的的 价格 + 历史走势 + 基本面 + 近期新闻
+- `get_market_report`: 获取当前市场状态的综合快照
 
-## 🎯 核心功能
+### 🛠️ 安装指南
 
-### 📋 API 接口概览
+#### 前置要求
 
-| 分类           | 接口             | 端点                                    | 描述                |
-| -------------- | ---------------- | --------------------------------------- | ------------------- |
-| 📊 **行情数据** | Market Price     | `GET /stock/price`                      | 历史价格+AI分析报告 |
-|                | Stock Quote      | `GET /api/stock/news`                   | 实时行情快照        |
-|                | Stock Quotes     | `POST /api/stock/quotes`                | 批量行情查询        |
-| 💼 **基本面**   | Fundamental      | `GET /api/stock/fundamental`            | 财务基本面数据      |
-| 📰 **新闻资讯** | Stock News       | `GET /api/stock/news`                   | 最新股票新闻        |
-|                | News by Date     | `GET /api/stock/news/date`              | 指定日期新闻        |
-| 🏛️ **宏观经济** | GDP Data         | `GET /api/macro/gdp`                    | GDP数据查询         |
-|                | CPI Data         | `GET /api/macro/cpi`                    | CPI数据查询         |
-|                | PMI Data         | `GET /api/macro/pmi`                    | PMI数据查询         |
-|                | PPI Data         | `GET /api/macro/ppi`                    | PPI数据查询         |
-|                | Money Supply     | `GET /api/macro/money-supply`           | 货币供应量数据      |
-|                | LPR Data         | `GET /api/macro/lpr`                    | LPR利率数据         |
-|                | Social Financing | `GET /api/macro/social-financing`       | 社会融资规模数据    |
-| 📅 **交易日历** | Trading Days     | `GET /api/calendar/trading-days`        | 交易日列表          |
-|                | Is Trading Day   | `GET /api/calendar/is-trading-day`      | 交易日检查          |
-|                | Trading Hours    | `GET /api/calendar/trading-hours`       | 交易时间信息        |
-|                | Exchanges        | `GET /api/calendar/supported-exchanges` | 支持的交易所        |
+- Python 3.10+
+- Redis (可选，用于缓存)
 
-> 💡 **提示**: 所有接口支持 A股、港股、美股三大市场  
-> 📚 **详细文档**: 启动后访问 http://localhost:9998/docs  
-> 🧪 **快速测试**: 访问 http://localhost:9998/ 使用可视化测试工具
+#### 安装步骤
 
----
+1. **克隆仓库**
+   ```bash
+   git clone https://github.com/yourusername/stock-tool-mcp.git
+   cd stock-tool-mcp
+   ```
 
-<table>
-<tr>
-<td width="50%">
+2. **创建并激活 Conda 环境**
+   ```bash
+   # 创建 Python 3.11.14 环境
+   conda create -n stock-mcp python=3.11.14
+   
+   # 激活环境
+   conda activate stock-mcp
+   ```
 
-### 📊 数据查询能力
-- ✅ **实时行情** - 分钟级价格/成交量
-- ✅ **历史数据** - K线图、复权价格
-- ✅ **财务报表** - 资产负债表、现金流
-- ✅ **技术指标** - MACD、RSI、布林带
-- ✅ **资金流向** - 主力资金、北向资金
-- ✅ **宏观数据** - GDP、CPI、PMI、PPI等
+3. **安装依赖**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-</td>
-<td width="50%">
+4. **配置环境变量**
+   
+   复制示例环境变量文件:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   编辑 `.env` 添加你的 API 密钥（可选，但推荐以获得更高限额）:
+   - `TUSHARE_TOKEN` - 用于 A 股数据（[获取 Token](https://tushare.pro/register)）
+   - `FINNHUB_API_KEY` - 用于美股机构数据（[获取 API Key](https://finnhub.io/)）
+   - `DASHSCOPE_API_KEY` - 用于阿里百炼 AI（可选，用于测试）
 
-### 🤖 AI 增强
-- 🔍 **智能搜索** - Tavily 语义搜索
-- 📰 **情绪分析** - 多源新闻聚合 + 评分
-- 📈 **深度研究** - AI 生成研究报告
-- 💡 **决策辅助** - 数据驱动的投资建议
-- 🌐 **多语言支持** - 中英文自动识别
-- 🧪 **可视化测试** - 内置API测试工具
+### 🏃‍♂️ 使用方法
 
-</td>
-</tr>
-</table>
+#### 方式一：作为 HTTP 服务器运行（推荐用于测试和开发）
 
----
-
-## ⚙️ 配置说明
-
-### 核心配置（`.env` 文件）
+使用 uvicorn 启动 MCP 服务器（Streamable HTTP 模式）：
 
 ```bash
-# 【必填】A股数据访问（申请地址：https://tushare.pro/）
-TUSHARE_TOKEN=your_token_here
+# 设置环境变量指定传输方式为 streamable-http
+export MCP_TRANSPORT=streamable-http
 
-# 【可选】代理配置（访问美股数据时推荐）
-HTTP_PROXY=http://127.0.0.1:7890
-HTTPS_PROXY=http://127.0.0.1:7890
+# 标准启动（监听 9898 端口）
+python -m uvicorn src.server.app:app --host 0.0.0.0 --port 9898
 
-# 【可选】增强功能
-TAVILY_API_KEY=your_key     # AI 搜索和研究
-FINNHUB_API_KEY=your_key    # 增强新闻数据
-NEWS_API_KEY=your_key       # 新闻聚合
+# 开发模式（支持热重载）
+MCP_TRANSPORT=streamable-http python -m uvicorn src.server.app:app --reload --port 9898
 ```
 
-<details>
-<summary>📖 <b>完整配置说明</b></summary>
-
-| 配置项          | 说明               | 默认值                         |
-| --------------- | ------------------ | ------------------------------ |
-| `REDIS_HOST`    | Redis 主机         | `redis`（Docker）/ `localhost` |
-| `CACHE_ENABLED` | 是否启用缓存       | `true`                         |
-| `CACHE_TTL`     | 缓存过期时间（秒） | `3600`                         |
-
-详见：[配置指南](docs/GUIDE.md#配置详解)
-</details>
-
----
-
-## 🧪 接口测试工具
-
-### 🎯 快速开始测试
-
-无需安装任何工具，直接在浏览器中测试所有API接口：
-
-1. **启动服务**: `docker-compose up -d`
-2. **打开测试页面**: http://localhost:9998/
-3. **选择接口**: 从左侧面板选择要测试的API
-4. **填写参数**: 自动填充常用参数，支持自定义修改
-5. **发送请求**: 一键测试，实时查看响应结果
-
-### ✨ 功能特性
-
-- 🎨 **可视化界面** - 直观的API分类和参数表单
-- 🔄 **实时测试** - 即时发送请求并显示响应
-- 🎯 **参数预填** - 智能填充常用股票代码和日期
-- 📝 **结果高亮** - JSON响应自动格式化和语法高亮
-- 📊 **多接口支持** - 覆盖股票、宏观经济、交易日历所有接口
-- 🌐 **响应式设计** - 支持桌面和移动设备
-
-### 📱 界面截图
-
-![接口测试页面主界面](docs/api-screenshots/接口测试页面.png)
-
-![接口测试详细功能](docs/api-screenshots/接口测试页面2.png)
-
-### 🚀 常用测试场景
-
+启动成功后，你会看到：
 ```
-🔹 股票数据测试
-   • 查询贵州茅台(600519)历史价格和技术分析
-   • 获取苹果(AAPL)实时行情快照
-   • 批量查询多只热门股票
-
-🔹 宏观经济数据测试
-   • 查询最近5年GDP增长趋势
-   • 获取CPI、PPI通胀数据对比
-   • 分析货币供应量变化
-
-🔹 交易日历测试
-   • 检查节假日是否为交易日
-   • 获取指定时间段的所有交易日
-   • 查询不同交易所的交易时间
+✅ MCP server ready!
 ```
 
----
+**使用示例（Streamable HTTP）**：
 
-## 📡 API 接口文档
+![查询贵州茅台价格 - HTTP 模式](docs/query_maotao_streamablehttp.png)
 
-### 🎨 交互式文档
+#### 方式二：使用 stdio 模式（推荐用于 AI Agent 集成）
 
-启动服务后访问以下地址查看完整的 Swagger UI 文档：
-- **Swagger UI**: http://localhost:9998/docs - 完整的OpenAPI文档
-- **ReDoc**: http://localhost:9998/redoc - 另一种文档风格
-- **🧪 API 测试工具**: http://localhost:9998/ - 可视化接口测试页面
+stdio 模式通过标准输入输出与 AI Agent 通信，适合 Claude Desktop、Cursor 等本地集成。
 
-> 💡 **推荐使用**: API测试工具提供了友好的界面，支持股票、宏观经济、交易日历等所有接口的快速测试，支持参数自动填充和响应结果高亮显示。
+**快速启动**：
+```bash
+# 使用启动脚本（已配置好 conda 环境）
+bash start_stock_mcp_stdio.sh
+```
 
-### 📋 样例报告
+**手动启动**：
+```bash
+# 激活 conda 环境
+conda activate stock-mcp
 
-查看完整的 AI 分析报告样例：
-- 📊 **技术分析报告**
-  - [贵州茅台 (600519)](docs/sample-reports/market_report_600519.md) - A股白酒龙头技术分析
-  - [腾讯控股 (0700)](docs/sample-reports/market_report_0700.md) - 港股科技股技术分析
-  - [苹果 (AAPL)](docs/sample-reports/market_report_AAPL.md) - 美股科技巨头技术分析
-- 💼 **基本面分析报告**
-  - [贵州茅台基本面 (600519)](docs/sample-reports/fundamental_report_600519.md) - 财务指标深度分析
-  - [腾讯控股基本面 (0700)](docs/sample-reports/fundamental_report_0700.md) - 港股财务数据分析
-- 📁 **原始数据样例**
-  - [贵州茅台财务数据 (JSON)](docs/sample-reports/fundamental_data_600519.json) - 完整财务数据结构
+# 启动 stdio 模式（默认传输方式）
+python -c "import src.server.mcp.server as m; m.create_mcp_server().run(transport='stdio')"
+```
 
----
-
-### 📊 股票数据接口
-
-<details open>
-<summary><b>1️⃣ 市场行情分析 - Market Price</b></summary>
-
-#### 接口信息
-- **路径**: `GET /stock/price`
-- **描述**: 获取指定股票的历史价格数据及AI分析报告
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例             |
-| --------------- | ------ | ---- | ---------------- | ---------------- |
-| `symbol`        | string | 是   | 股票代码         | `000001`, `AAPL` |
-| `start_date`    | string | 否   | 开始日期         | `2024-07-13`     |
-| `end_date`      | string | 否   | 结束日期         | `2025-07-13`     |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...`   |
-
-#### 响应示例
+**集成到 Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 ```json
 {
-  "status": "success",
-  "message": "成功获取股票价格数据和分析报告",
-  "data": "# AAPL 股票分析报告\n\n## 📊 基本信息\n- **股票名称**: 苹果公司\n- **股票代码**: AAPL\n- **分析期间**: 2025-07-12 至 2025-08-12\n\n## 💰 价格表现\n- **当前价格**: $227.18\n- **期间涨跌**: $+18.80 (+9.02%)\n- **期间最高**: $230.74\n- **期间最低**: $201.27\n- **平均成交量**: 60,489,490\n\n## 📈 技术指标\n- **5日均线**: $218.35\n- **20日均线**: $212.25\n- **近期趋势**: 上升"
-}
-```
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/stock/price?symbol=AAPL&start_date=2024-07-13&end_date=2025-07-13"
-```
-
-![Market Price API](docs/api-screenshots/market-price.png)
-
-</details>
-
-<details>
-<summary><b>2️⃣ 基本面数据 - Stock Fundamental</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/stock/fundamental`
-- **描述**: 获取股票基本面财务数据
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例               |
-| --------------- | ------ | ---- | ---------------- | ------------------ |
-| `symbol`        | string | 是   | 股票代码         | `000008`, `600519` |
-| `curr_date`     | string | 否   | 查询日期         | `2025-06-01`       |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...`     |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/stock/fundamental?symbol=000008&curr_date=2025-06-01" 
-```
-
-![Stock Fundamental API](docs/api-screenshots/stock-fundamental.png)
-
-</details>
-
-<details>
-<summary><b>3️⃣ 实时行情 - Stock Quote</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/stock/news`
-- **描述**: 获取股票实时行情快照
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例             |
-| --------------- | ------ | ---- | ---------------- | ---------------- |
-| `symbol`        | string | 是   | 股票代码         | `000001`, `AAPL` |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...`   |
-
-#### 响应示例
-```json
-{
-  "status": "success",
-  "message": "成功获取 AAPL 的实时行情",
-  "data": {
-    "ticker": "AAPL",
-    "currentPrice": "256.48",
-    "dailyChangePercent": "-0.0818107444777616",
-    "peRatio": "38.919575",
-    "marketCap": "3806263246848",
-    "source": "yfinance"
+  "mcpServers": {
+    "stock-tools": {
+      "command": "bash",
+      "args": ["start_stock_mcp_stdio.sh"],
+      "cwd": "/path/to/stock-tool-mcp"
+    }
   }
 }
 ```
 
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/stock/news?symbol=AAPL" 
-```
-
-![Stock Quote API](docs/api-screenshots/stock-quote.png)
-
-</details>
-
-<details>
-<summary><b>4️⃣ 批量行情查询 - Stock Quotes</b></summary>
-
-#### 接口信息
-- **路径**: `POST /api/stock/quotes`
-- **描述**: 批量查询多个股票的实时行情
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             |
-| --------------- | ------ | ---- | ---------------- |
-| `symbols`       | array  | 是   | 股票代码列表     |
-| `Authorization` | string | 否   | 认证令牌(Header) |
-
-#### 使用示例
-```bash
-curl -X POST "http://localhost:9998/api/stock/quotes" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: a7f3518b-2983-4d29-bd1d-15a13e470903" \
-  -d '{"symbols": ["AAPL", "TSLA", "MSFT"]}'
-```
-
-![Stock Quotes API](docs/api-screenshots/stock-quotes.png)
-
-</details>
-
----
-
-### 📰 新闻数据接口
-
-<details>
-<summary><b>5️⃣ 股票新闻 - Stock News</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/stock/news`
-- **描述**: 获取指定股票的最新新闻
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例             |
-| --------------- | ------ | ---- | ---------------- | ---------------- |
-| `symbol`        | string | 是   | 股票代码         | `000001`, `AAPL` |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...`   |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/stock/news?symbol=000001"
-```
-
-![Stock News API](docs/api-screenshots/stock-news.png)
-
-</details>
-
-<details>
-<summary><b>6️⃣ 指定日期新闻 - News by Date</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/stock/news/date`
-- **描述**: 获取指定日期范围内的股票新闻
-
-#### 请求参数
-| 参数名          | 类型    | 必填 | 说明             | 示例           |
-| --------------- | ------- | ---- | ---------------- | -------------- |
-| `symbol`        | string  | 是   | 股票代码         | `000001`       |
-| `target_date`   | string  | 是   | 目标日期         | `2025-09-10`   |
-| `days_before`   | integer | 否   | 向前查询天数     | `7`            |
-| `Authorization` | string  | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/stock/news/date?symbol=000001&target_date=2025-09-10&days_before=7"
-```
-
-![News by Date API](docs/api-screenshots/获取指定日期的新闻.png)
-
-</details>
-
----
-
-### 📅 交易日历接口
-
-<details>
-<summary><b>7️⃣ 交易日列表 - Trading Days</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/calendar/trading-days`
-- **描述**: 获取指定时间范围内的交易日列表
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例           |
-| --------------- | ------ | ---- | ---------------- | -------------- |
-| `symbol`        | string | 是   | 股票代码         | `000001`       |
-| `start_date`    | string | 是   | 开始日期         | `2025-01-01`   |
-| `end_date`      | string | 是   | 结束日期         | `2025-09-01`   |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/calendar/trading-days?symbol=000001&start_date=2025-01-01&end_date=2025-09-01" \
-```
-
-![Trading Days API](docs/api-screenshots/获取指定股票的交易日列表.png)
-
-</details>
-
-<details>
-<summary><b>8️⃣ 交易日检查 - Is Trading Day</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/calendar/is-trading-day`
-- **描述**: 检查指定日期是否为交易日
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例           |
-| --------------- | ------ | ---- | ---------------- | -------------- |
-| `symbol`        | string | 是   | 股票代码         | `000001`       |
-| `check_date`    | string | 是   | 检查日期         | `2025-09-30`   |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/calendar/is-trading-day?symbol=000001&check_date=2025-09-30" \
-```
-
-</details>
-
-<details>
-<summary><b>9️⃣ 交易时间 - Trading Hours</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/calendar/trading-hours`
-- **描述**: 获取指定日期的交易时间信息
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例           |
-| --------------- | ------ | ---- | ---------------- | -------------- |
-| `symbol`        | string | 是   | 股票代码         | `000001`       |
-| `check_date`    | string | 是   | 检查日期         | `2025-09-30`   |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/calendar/trading-hours?symbol=000001&check_date=2025-09-30" \
-```
-
-</details>
-
-<details>
-<summary><b>🔟 支持的交易所 - Supported Exchanges</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/calendar/supported-exchanges`
-- **描述**: 获取系统支持的所有交易所列表
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             |
-| --------------- | ------ | ---- | ---------------- |
-| `Authorization` | string | 否   | 认证令牌(Header) |
-
-#### 响应示例
+**集成到 Cursor** (`.cursor/mcp_config.json`):
 ```json
 {
-  "status": "success",
-  "message": "成功获取支持的交易所列表",
-  "data": {
-    "total_count": 200,
-    "regions": {
-      "美国": ["NYSE", "NASDAQ"],
-      "中国": ["XSHG", "XSHE"],
-      "欧洲": ["XPAR", "XLON"],
-      "亚太": ["NSE", "TSE"],
-      "加拿大": ["TSX"]
+  "mcpServers": {
+    "stock-tools": {
+      "command": "bash",
+      "args": ["start_stock_mcp_stdio.sh"],
+      "cwd": "/path/to/stock-tool-mcp"
+    }
+  }
+}
+```
+
+**使用示例（stdio 模式）**：
+
+![查询贵州茅台价格 - stdio 模式](docs/query_maotao_stdio.png)
+
+#### 方式三：通过 HTTP API 调用
+
+服务器启动后，可以通过 HTTP 接口调用（Streamable HTTP 协议）：
+
+```bash
+# 列出所有可用工具
+curl -X POST http://localhost:9898 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/list",
+    "params": {},
+    "id": "1"
+  }'
+
+# 调用工具示例：查询贵州茅台价格
+curl -X POST "http://localhost:9898/?_tool=get_real_time_price" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "get_real_time_price",
+      "arguments": {
+        "ticker": "SSE:600519"
+      }
     },
-    "all_exchanges": ["NYSE", "NASDAQ", "XSHG", "XSHE", "..."]
+    "id": "2"
+  }'
+```
+
+### 🧰 可用工具一览
+
+| 工具名称                         | 描述                                   | 示例参数                                                                         |
+| -------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------- |
+| `search_assets`                  | 通过名称或代码搜索股票、加密货币或 ETF | `{"query": "茅台"}`                                                              |
+| `get_asset_info`                 | 获取资产的详细信息（公司简介、行业等） | `{"ticker": "SSE:600519"}`                                                       |
+| `get_real_time_price`            | 获取任何资产的当前实时价格             | `{"ticker": "SSE:600519"}`                                                       |
+| `get_historical_prices`          | 获取指定日期范围的 OHLCV 数据          | `{"ticker": "SSE:600519", "start_date": "2024-01-01", "end_date": "2024-12-31"}` |
+| `calculate_technical_indicators` | 计算技术指标 (RSI, MACD 等)            | `{"ticker": "SSE:600519", "indicators": ["rsi", "macd"]}`                        |
+| `generate_trading_signal`        | 基于技术指标生成交易信号               | `{"ticker": "SSE:600519"}`                                                       |
+| `get_financials`                 | 检索详细的财务报表和比率               | `{"ticker": "SSE:600519"}`                                                       |
+| `perform_deep_research`          | **(Agent 首选)** 一次调用聚合所有数据  | `{"ticker": "SSE:600519"}`                                                       |
+| `get_latest_news`                | 获取指定标的的相关市场新闻             | `{"ticker": "SSE:600519"}`                                                       |
+
+> **💡 重要提示**: 
+> - A股股票代码格式：`SSE:600519`（上交所）、`SZSE:000001`（深交所）
+> - 美股股票代码格式：`NASDAQ:AAPL`、`NYSE:TSLA`
+> - 加密货币格式：`CRYPTO:BTC`、`CRYPTO:ETH`
+
+### 📸 实际使用示例
+
+本项目支持两种传输协议，分别适用于不同场景：
+
+#### 1. Streamable HTTP 模式
+适合通过 HTTP 接口调用，方便测试和集成到 Web 应用：
+
+![查询贵州茅台价格 - HTTP 模式](docs/query_maotao_streamablehttp.png)
+
+#### 2. stdio 模式
+适合直接集成到 AI Agent（如 Claude Desktop、Cursor），通过标准输入输出通信：
+
+![查询贵州茅台价格 - stdio 模式](docs/query_maotao_stdio.png)
+
+> **💡 两种模式的区别**：
+> - **Streamable HTTP**: 需要启动 Web 服务器，支持远程调用，适合生产环境
+> - **stdio**: 直接进程通信，无需网络端口，适合本地 AI Agent 集成，延迟更低
+
+### 🧪 测试脚本
+
+项目提供了完整的测试脚本，帮助你快速验证功能：
+
+#### 1. HTTP 接口测试
+
+使用 `scripts/test_mcp_http.py` 测试 MCP 服务器的 HTTP 接口：
+
+```bash
+# 1. 启动 MCP 服务器（在一个终端）
+python -m uvicorn src.server.app:app --host 0.0.0.0 --port 9898
+
+# 2. 在另一个终端运行测试脚本
+python scripts/test_mcp_http.py
+```
+
+该脚本会：
+- ✅ 连接到 MCP 服务器（http://localhost:9898）
+- ✅ 列出所有可用工具
+- ✅ 使用阿里百炼（通义千问）调用工具
+- ✅ 查询贵州茅台的价格和基本面
+
+#### 2. OpenAPI 文档生成
+
+使用 `scripts/mcp2openapi.py` 生成 OpenAPI 规范文档：
+
+```bash
+python scripts/mcp2openapi.py
+```
+
+生成的 OpenAPI 文档可以导入到 Apifox、Postman 等工具中进行测试。
+
+### 🗺️ 路线图与未来计划
+
+虽然当前的数据检索和分析能力已相当健壮，但以下功能计划在未来版本中支持：
+
+- [ ] **实盘交易执行**: 目前 `execute_order` 工具处于 **模拟模式 (Simulation Mode)**。我们计划通过 CCXT（加密货币）和券商 API（股票）集成真实的交易下单能力
+- [ ] **高级缓存策略**: 实现更细粒度的 TTL (Time-To-Live) 设置，区分实时价格数据（短 TTL）和财务报表（长 TTL），以平衡性能与 API 配额消耗
+- [ ] **用户账户管理**: 安全地管理用户特定的交易所 API 密钥，实现个性化交易
+- [ ] **更多数据适配器**: 扩展支持更多专业数据源（如情绪分析提供商、另类数据等）
+- [ ] **WebSocket 实时推送**: 支持实时行情推送，减少轮询开销
+- [ ] **回测引擎**: 内置策略回测功能，验证交易策略的有效性
+
+### 🏗️ 项目架构
+
+本项目采用 **领域驱动设计 (DDD)** 架构，清晰分离关注点：
+
+```
+src/server/
+├── app.py                 # FastMCP 应用入口
+├── config/                # 配置管理
+├── core/                  # 核心业务逻辑
+│   └── dependencies.py    # 依赖注入容器
+├── domain/                # 领域层
+│   ├── adapters/          # 数据适配器（Yahoo, Akshare, Tushare 等）
+│   ├── models/            # 领域模型
+│   └── services/          # 领域服务
+├── infrastructure/        # 基础设施层
+│   ├── cache/             # 缓存（Redis）
+│   └── external/          # 外部 API 客户端
+├── mcp/                   # MCP 协议层
+│   └── tools/             # MCP 工具定义
+└── utils/                 # 工具类
+```
+
+**核心设计原则**:
+- 📦 **适配器模式**: 统一多数据源接口，自动故障转移
+- 🔌 **依赖注入**: 使用 `dependency-injector` 管理服务生命周期
+- ⚡ **异步优先**: 所有外部调用均为异步，提升并发性能
+- 🎯 **单一职责**: 每个服务专注于特定领域功能
+
+### 📄 许可证
+
+MIT License
+
+---
+
+<a name="english-documentation"></a>
+
+## 🇬🇧 English Documentation
+
+### 📖 Introduction
+
+A powerful, comprehensive Model Context Protocol (MCP) server for financial market data, technical analysis, and fundamental research.
+
+Designed to empower AI agents (like Claude, Cursor, etc.) with professional-grade stock market capabilities, bridging the gap between LLMs and real-time financial data.
+
+### 🚀 Features
+
+#### 1. Multi-Source Market Data
+
+Stop worrying about which API to use. The server features a smart **Adapter Manager** that automatically routes requests and handles failover across multiple providers:
+
+- **US Stocks**: Yahoo Finance, Finnhub
+- **China A-Shares**: Akshare, Tushare, Baostock
+- **Crypto**: CCXT (Binance, OKX, etc.)
+- **Forex & Indices**: Yahoo Finance
+
+#### 2. Professional Technical Analysis
+
+Built-in quantitative analysis engine providing more than just raw numbers:
+
+- **Indicators**: SMA/EMA, RSI, MACD, Bollinger Bands, KDJ, ATR
+- **Pattern Recognition**: Automatically detects candlestick patterns (Doji, Hammer, Engulfing)
+- **Support & Resistance**: Dynamic calculation of key price levels
+- **Volume Profile**: Analysis of volume distribution to identify value areas
+
+#### 3. Deep Fundamental Research
+
+Automated financial analyst capabilities:
+
+- **Financial Statements**: Balance Sheet, Income Statement, Cash Flow
+- **Health Scoring**: 0-100 proprietary health score based on Profitability, Solvency, Growth, and Valuation
+- **Key Ratios**: PE, PB, ROE, ROA, Debt-to-Equity, and more
+
+#### 4. Smart Aggregation Tools
+
+Optimized for LLM context windows:
+
+- `perform_deep_research`: One-shot tool to fetch price, history, fundamentals, and recent news for a symbol
+- `get_market_report`: A comprehensive snapshot of the current market status
+
+### 🛠️ Installation
+
+#### Prerequisites
+
+- Python 3.10+
+- Redis (optional, for caching)
+
+#### Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/stock-tool-mcp.git
+   cd stock-tool-mcp
+   ```
+
+2. **Create and activate Conda environment**
+   ```bash
+   # Create Python 3.11.14 environment
+   conda create -n stock-mcp python=3.11.14
+   
+   # Activate environment
+   conda activate stock-mcp
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configuration**
+   
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` to add your API keys (optional but recommended for higher limits):
+   - `TUSHARE_TOKEN` - For China A-shares data ([Get Token](https://tushare.pro/register))
+   - `FINNHUB_API_KEY` - For US institutional data ([Get API Key](https://finnhub.io/))
+   - `DASHSCOPE_API_KEY` - For Alibaba Cloud AI (optional, for testing)
+
+### 🏃‍♂️ Usage
+
+#### Method 1: Run as HTTP Server (Recommended for Testing & Development)
+
+Start the MCP server using uvicorn (Streamable HTTP mode):
+
+```bash
+# Set environment variable to specify transport mode
+export MCP_TRANSPORT=streamable-http
+
+# Standard run (listening on port 9898)
+python -m uvicorn src.server.app:app --host 0.0.0.0 --port 9898
+
+# Development mode (with hot reload)
+MCP_TRANSPORT=streamable-http python -m uvicorn src.server.app:app --reload --port 9898
+```
+
+After successful startup, you'll see:
+```
+✅ MCP server ready!
+```
+
+**Example (Streamable HTTP mode)**:
+
+![Query Moutai Price - HTTP Mode](docs/query_maotao_streamablehttp.png)
+
+#### Method 2: Use stdio Mode (Recommended for AI Agent Integration)
+
+stdio mode communicates with AI agents via standard input/output, suitable for local integration with Claude Desktop, Cursor, etc.
+
+**Quick Start**:
+```bash
+# Use the startup script (conda environment pre-configured)
+bash start_stock_mcp_stdio.sh
+```
+
+**Manual Start**:
+```bash
+# Activate conda environment
+conda activate stock-mcp
+
+# Start stdio mode (default transport)
+python -c "import src.server.mcp.server as m; m.create_mcp_server().run(transport='stdio')"
+```
+
+**Integrate with Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "stock-tools": {
+      "command": "bash",
+      "args": ["start_stock_mcp_stdio.sh"],
+      "cwd": "/path/to/stock-tool-mcp"
+    }
   }
 }
 ```
 
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/calendar/supported-exchanges" \
-```
-
-![Supported Exchanges API](docs/api-screenshots/获取支持的交易所列表.png)
-
-</details>
-
----
-
-### 🏛️ 宏观经济数据接口
-
-<details>
-<summary><b>1️⃣ GDP 数据 - GDP Data</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/macro/gdp`
-- **描述**: 获取中国GDP数据
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例           |
-| --------------- | ------ | ---- | ---------------- | -------------- |
-| `start_date`    | string | 否   | 开始日期         | `2020-01-01`   |
-| `end_date`      | string | 否   | 结束日期         | `2024-12-31`   |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 响应示例
+**Integrate with Cursor** (`.cursor/mcp_config.json`):
 ```json
 {
-  "status": "success",
-  "message": "成功获取GDP数据",
-  "data": [
-    {
-      "季度": "2024年第3季度",
-      "国内生产总值_当季值": "306480.0",
-      "国内生产总值_累计值": "913027.0",
-      "国内生产总值_同比增长": "4.6",
-      "国内生产总值_累计同比增长": "4.8"
+  "mcpServers": {
+    "stock-tools": {
+      "command": "bash",
+      "args": ["start_stock_mcp_stdio.sh"],
+      "cwd": "/path/to/stock-tool-mcp"
     }
-  ]
+  }
 }
 ```
 
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/macro/gdp?start_date=2020-01-01&end_date=2024-12-31" \
-```
+**Example (stdio mode)**:
 
-</details>
+![Query Moutai Price - stdio Mode](docs/query_maotao_stdio.png)
 
-<details>
-<summary><b>2️⃣ CPI 数据 - CPI Data</b></summary>
+#### Method 3: HTTP API Calls
 
-#### 接口信息
-- **路径**: `GET /api/macro/cpi`
-- **描述**: 获取中国CPI数据
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例           |
-| --------------- | ------ | ---- | ---------------- | -------------- |
-| `start_date`    | string | 否   | 开始日期         | `2020-01-01`   |
-| `end_date`      | string | 否   | 结束日期         | `2024-12-31`   |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 响应示例
-```json
-{
-  "status": "success",
-  "message": "成功获取CPI数据",
-  "data": [
-    {
-      "月份": "2024年09月",
-      "全国_当月": "100.4",
-      "全国_累计": "100.3",
-      "城市_当月": "100.4",
-      "城市_累计": "100.4",
-      "农村_当月": "100.5",
-      "农村_累计": "100.1"
-    }
-  ]
-}
-```
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/macro/cpi?start_date=2020-01-01&end_date=2024-12-31" \
-```
-
-</details>
-
-<details>
-<summary><b>3️⃣ PMI 数据 - PMI Data</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/macro/pmi`
-- **描述**: 获取中国PMI数据
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例           |
-| --------------- | ------ | ---- | ---------------- | -------------- |
-| `start_date`    | string | 否   | 开始日期         | `2020-01-01`   |
-| `end_date`      | string | 否   | 结束日期         | `2024-12-31`   |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/macro/pmi?start_date=2020-01-01&end_date=2024-12-31" \
-```
-
-</details>
-
-<details>
-<summary><b>4️⃣ PPI 数据 - PPI Data</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/macro/ppi`
-- **描述**: 获取中国PPI数据
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例           |
-| --------------- | ------ | ---- | ---------------- | -------------- |
-| `start_date`    | string | 否   | 开始日期         | `2020-01-01`   |
-| `end_date`      | string | 否   | 结束日期         | `2024-12-31`   |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/macro/ppi?start_date=2020-01-01&end_date=2024-12-31" \
-```
-
-</details>
-
-<details>
-<summary><b>5️⃣ 货币供应量 - Money Supply</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/macro/money-supply`
-- **描述**: 获取中国货币供应量数据
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例           |
-| --------------- | ------ | ---- | ---------------- | -------------- |
-| `start_date`    | string | 否   | 开始日期         | `2020-01-01`   |
-| `end_date`      | string | 否   | 结束日期         | `2024-12-31`   |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/macro/money-supply?start_date=2020-01-01&end_date=2024-12-31" \
-```
-
-</details>
-
-<details>
-<summary><b>6️⃣ LPR 利率 - LPR Data</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/macro/lpr`
-- **描述**: 获取中国LPR利率数据
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例           |
-| --------------- | ------ | ---- | ---------------- | -------------- |
-| `start_date`    | string | 否   | 开始日期         | `2020-01-01`   |
-| `end_date`      | string | 否   | 结束日期         | `2024-12-31`   |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/macro/lpr?start_date=2020-01-01&end_date=2024-12-31" \
-```
-
-</details>
-
-<details>
-<summary><b>7️⃣ 社会融资规模 - Social Financing</b></summary>
-
-#### 接口信息
-- **路径**: `GET /api/macro/social-financing`
-- **描述**: 获取中国社会融资规模数据
-
-#### 请求参数
-| 参数名          | 类型   | 必填 | 说明             | 示例           |
-| --------------- | ------ | ---- | ---------------- | -------------- |
-| `start_date`    | string | 否   | 开始日期         | `2020-01-01`   |
-| `end_date`      | string | 否   | 结束日期         | `2024-12-31`   |
-| `Authorization` | string | 否   | 认证令牌(Header) | `a7f3518b-...` |
-
-#### 使用示例
-```bash
-curl -X GET "http://localhost:9998/api/macro/social-financing?start_date=2020-01-01&end_date=2024-12-31" \
-```
-
-</details>
-
----
-
-### 🔐 认证说明
-
-所有API接口均支持可选的 `Authorization` Header 进行身份验证：
+After starting the server, you can call it via HTTP interface (Streamable HTTP protocol):
 
 ```bash
--H "Authorization: your-api-token-here"
+# List all available tools
+curl -X POST http://localhost:9898 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/list",
+    "params": {},
+    "id": "1"
+  }'
+
+# Call tool example: Query Moutai stock price
+curl -X POST "http://localhost:9898/?_tool=get_real_time_price" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "get_real_time_price",
+      "arguments": {
+        "ticker": "SSE:600519"
+      }
+    },
+    "id": "2"
+  }'
 ```
 
-**获取Token**: 请联系管理员或在配置文件中设置自定义Token。
+### 🧰 Available Tools
 
----
+| Tool Name                        | Description                                                      | Example Parameters                                                               |
+| -------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `search_assets`                  | Search for stocks, crypto, or ETFs by name or ticker             | `{"query": "Moutai"}`                                                            |
+| `get_asset_info`                 | Get detailed asset information (company profile, industry, etc.) | `{"ticker": "SSE:600519"}`                                                       |
+| `get_real_time_price`            | Get the current live price for any asset                         | `{"ticker": "SSE:600519"}`                                                       |
+| `get_historical_prices`          | Fetch OHLCV data for a specific date range                       | `{"ticker": "SSE:600519", "start_date": "2024-01-01", "end_date": "2024-12-31"}` |
+| `calculate_technical_indicators` | Compute technical indicators (RSI, MACD, etc.)                   | `{"ticker": "SSE:600519", "indicators": ["rsi", "macd"]}`                        |
+| `generate_trading_signal`        | Generate trading signals based on technical indicators           | `{"ticker": "SSE:600519"}`                                                       |
+| `get_financials`                 | Retrieve detailed financial statements and ratios                | `{"ticker": "SSE:600519"}`                                                       |
+| `perform_deep_research`          | **(Agent Favorite)** Aggregate all data in one call              | `{"ticker": "SSE:600519"}`                                                       |
+| `get_latest_news`                | Fetch relevant market news for a specific symbol                 | `{"ticker": "SSE:600519"}`                                                       |
 
-### 📊 快速测试
+> **💡 Important Note**: 
+> - A-share ticker format: `SSE:600519` (Shanghai), `SZSE:000001` (Shenzhen)
+> - US stock ticker format: `NASDAQ:AAPL`, `NYSE:TSLA`
+> - Crypto format: `CRYPTO:BTC`, `CRYPTO:ETH`
 
-使用以下命令快速测试主要接口：
+### 📸 Real-World Examples
+
+This project supports two transport protocols, each suitable for different scenarios:
+
+#### 1. Streamable HTTP Mode
+Suitable for HTTP interface calls, convenient for testing and integration into web applications:
+
+![Query Moutai Price - HTTP Mode](docs/query_maotao_streamablehttp.png)
+
+#### 2. stdio Mode
+Suitable for direct integration into AI Agents (like Claude Desktop, Cursor), communicating via standard input/output:
+
+![Query Moutai Price - stdio Mode](docs/query_maotao_stdio.png)
+
+> **💡 Differences Between the Two Modes**:
+> - **Streamable HTTP**: Requires a web server, supports remote calls, suitable for production environments
+> - **stdio**: Direct process communication, no network port required, suitable for local AI Agent integration with lower latency
+
+### 🧪 Test Scripts
+
+The project provides comprehensive test scripts to help you quickly verify functionality:
+
+#### 1. HTTP Interface Testing
+
+Use `scripts/test_mcp_http.py` to test the MCP server's HTTP interface:
 
 ```bash
-# 查询茅台股价
-curl "http://localhost:9998/stock/price?symbol=600519&start_date=2024-01-01&end_date=2025-01-01"
+# 1. Start the MCP server (in one terminal)
+python -m uvicorn src.server.app:app --host 0.0.0.0 --port 9898
 
-# 获取苹果实时行情
-curl "http://localhost:9998/api/stock/news?symbol=AAPL"
-
-# 检查今天是否为交易日
-curl "http://localhost:9998/api/calendar/is-trading-day?symbol=000001&check_date=$(date +%Y-%m-%d)"
-
-# 获取所有支持的交易所
-curl "http://localhost:9998/api/calendar/supported-exchanges"
-
-# 查询GDP数据
-curl "http://localhost:9998/api/macro/gdp?start_date=2020-01-01&end_date=2024-12-31"
-
-# 查询CPI数据
-curl "http://localhost:9998/api/macro/cpi?start_date=2023-01-01&end_date=2024-12-31"
+# 2. Run the test script in another terminal
+python scripts/test_mcp_http.py
 ```
 
-> 🎨 **可视化测试**: 访问 http://localhost:9998/ 可以直接在浏览器中测试所有接口，无需命令行操作
+This script will:
+- ✅ Connect to the MCP server (http://localhost:9898)
+- ✅ List all available tools
+- ✅ Use Alibaba Cloud Qwen to call tools
+- ✅ Query Moutai's price and fundamentals
 
----
+#### 2. OpenAPI Documentation Generation
 
-### 📖 API 设计规范
-
-本项目API遵循以下设计原则：
-
-✅ **RESTful风格** - 使用标准HTTP方法(GET/POST)  
-✅ **统一响应格式** - 所有接口返回统一的JSON结构  
-✅ **详细错误信息** - 错误响应包含明确的错误码和描述  
-✅ **OpenAPI 3.0** - 完整的API规范文档([查看](stock-mcp.openapi.json))  
-✅ **自动文档生成** - Swagger UI + ReDoc双文档支持
-
----
-
-## 📊 数据源说明
-
-### 股票数据
-- **A股数据**: [Tushare Pro](https://tushare.pro/) - 专业金融数据接口
-- **港股美股**: [yFinance](https://github.com/ranaroussi/yfinance) - Yahoo Finance API
-- **补充数据**: [AKShare](https://akshare.akfamily.xyz/) - 开源金融数据库
-
-### 宏观经济数据
-- **GDP数据**: 国家统计局官方发布的季度GDP数据
-- **CPI/PPI**: 国家统计局月度消费者/生产者价格指数
-- **PMI数据**: 中国物流与采购联合会发布的采购经理指数
-- **货币供应量**: 中国人民银行发布的M0、M1、M2数据
-- **LPR利率**: 贷款市场报价利率，央行每月发布
-- **社会融资规模**: 央行统计的社会融资规模存量和增量数据
-
-### 新闻资讯
-- **AI增强搜索**: [Tavily API](https://tavily.com/) - 智能搜索和摘要
-- **多源聚合**: [Finnhub](https://finnhub.io/) + [NewsAPI](https://newsapi.org/)
-
-### 数据更新频率
-- **实时行情**: 市场开盘期间实时更新
-- **基本面数据**: 财报发布后及时更新
-- **宏观数据**: 官方发布后1-2个工作日内更新
-- **新闻数据**: 实时抓取，每小时刷新
-
----
-
-## 🐳 Docker 部署
-
-### 服务架构
-
-| 端口   | 服务       | 说明                        |
-| ------ | ---------- | --------------------------- |
-| `9998` | FastAPI    | RESTful API + Swagger 文档  |
-| `9999` | MCP Server | Model Context Protocol 服务 |
-| `6379` | Redis      | 内部缓存（不对外暴露）      |
-
-### 常用命令
+Use `scripts/mcp2openapi.py` to generate OpenAPI specification:
 
 ```bash
-# 启动服务
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f stock-mcp
-
-# 停止服务
-docker-compose down
-
-# 重启服务
-docker-compose restart
-
-# 重新构建
-docker-compose up -d --build
+python scripts/mcp2openapi.py
 ```
 
----
+The generated OpenAPI documentation can be imported into tools like Apifox or Postman for testing.
 
-## 🛠️ 故障排查
+### 🗺️ Roadmap & Future Plans
 
-<details>
-<summary><b>❌ Redis 连接失败</b></summary>
+While the data retrieval and analysis capabilities are robust, the following features are planned for future releases:
 
-```bash
-# 检查配置
-cat .env | grep REDIS_HOST
-# 确保 Docker 环境使用: REDIS_HOST=redis
+- [ ] **Real Trading Execution**: Currently, the `execute_order` tool runs in **simulation mode**. We plan to integrate real trading capabilities via CCXT (for crypto) and broker APIs (for stocks)
+- [ ] **Advanced Caching Strategy**: Implement fine-grained TTL (Time-To-Live) settings to distinguish between real-time price data (short TTL) and financial reports (long TTL) for better performance and API quota management
+- [ ] **User Account Management**: Secure handling of user-specific exchange API keys for personalized trading
+- [ ] **More Data Adapters**: Expansion to include more specialized data sources (e.g., sentiment analysis providers, alternative data)
+- [ ] **WebSocket Real-time Push**: Support real-time market data push to reduce polling overhead
+- [ ] **Backtesting Engine**: Built-in strategy backtesting functionality to validate trading strategies
 
-# 检查 Redis 状态
-docker-compose ps redis
+### 🏗️ Project Architecture
+
+This project adopts **Domain-Driven Design (DDD)** architecture with clear separation of concerns:
+
 ```
-</details>
-
-<details>
-<summary><b>❌ yFinance 超时</b></summary>
-
-```bash
-# 检查代理配置
-cat .env | grep PROXY
-# Docker 环境应使用: HTTP_PROXY=http://host.docker.internal:7890
-```
-</details>
-
-<details>
-<summary><b>❌ Tushare 权限错误</b></summary>
-
-确保 Token 有效且已配置到 `.env` 文件：
-```bash
-grep TUSHARE_TOKEN .env
-```
-</details>
-
-**更多问题**：[完整故障排查指南](docs/GUIDE.md#故障排查)
-
----
-
-## 📚 文档
-
-- [📡 完整 API 文档](docs/API.md) - 所有接口详细说明、参数、示例
-- [💡 API 使用示例](docs/API_EXAMPLES.md) - 实际场景的代码示例
-- [📖 使用指南](docs/GUIDE.md) - 配置、部署、最佳实践
-- [🔧 开发文档](docs/DEVELOPMENT.md) - 架构设计、二次开发
-- [🌐 OpenAPI 规范](stock-mcp.openapi.json) - 标准API规范文件
-- [💻 Swagger UI](http://localhost:9998/docs) - 交互式API测试(服务启动后访问)
-
----
-
-## 🆕 更新日志
-
-### v2.1.0 (2025-10-13)
-- ✨ **新增宏观经济数据接口** - 支持GDP、CPI、PMI、PPI、货币供应量、LPR、社会融资规模
-- 🧪 **内置API测试工具** - 可视化接口测试页面，支持所有API的快速测试
-- 📊 **数据监控面板** - 实时展示数据获取状态和性能指标
-- 🚀 **性能优化** - 改进缓存策略，提升数据查询速度
-- 📚 **文档完善** - 新增宏观数据说明和测试工具使用指南
-
-### v2.0.0 (2025-09-15)
-- 🔄 **架构重构** - 基于MCP协议的全新架构
-- 🌐 **多市场支持** - 完整的A股/港股/美股数据覆盖
-- 🤖 **AI分析增强** - 集成GPT的智能分析报告
-- 🐳 **容器化部署** - Docker一键部署方案
-
----
-
-## 🤝 参与贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-```bash
-# 1. Fork 项目
-# 2. 创建特性分支
-git checkout -b feature/amazing-feature
-
-# 3. 提交代码
-git commit -m "Add: amazing feature"
-
-# 4. 推送并创建 PR
-git push origin feature/amazing-feature
+src/server/
+├── app.py                 # FastMCP application entry
+├── config/                # Configuration management
+├── core/                  # Core business logic
+│   └── dependencies.py    # Dependency injection container
+├── domain/                # Domain layer
+│   ├── adapters/          # Data adapters (Yahoo, Akshare, Tushare, etc.)
+│   ├── models/            # Domain models
+│   └── services/          # Domain services
+├── infrastructure/        # Infrastructure layer
+│   ├── cache/             # Caching (Redis)
+│   └── external/          # External API clients
+├── mcp/                   # MCP protocol layer
+│   └── tools/             # MCP tool definitions
+└── utils/                 # Utilities
 ```
 
----
+**Core Design Principles**:
+- 📦 **Adapter Pattern**: Unified multi-source interface with automatic failover
+- 🔌 **Dependency Injection**: Using `dependency-injector` for service lifecycle management
+- ⚡ **Async First**: All external calls are asynchronous for improved concurrency
+- 🎯 **Single Responsibility**: Each service focuses on specific domain functionality
 
-## 📄 开源协议
+### 📄 License
 
-MIT License - 详见 [LICENSE](LICENSE)
-
----
-
-<div align="center">
-
-### 🙏 致谢
-
-本项目基于以下优秀开源项目构建
-
-[MCP](https://modelcontextprotocol.io/) • [FastAPI](https://fastapi.tiangolo.com/) • [AKShare](https://akshare.akfamily.xyz/) • [Tushare](https://tushare.pro/) • [yFinance](https://github.com/ranaroussi/yfinance) • [Tavily](https://tavily.com/)
-
----
-
-**⭐️ 如果对你有帮助，请给个 Star ⭐️**
-
-</div>
+MIT License

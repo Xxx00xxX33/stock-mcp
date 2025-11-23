@@ -78,6 +78,9 @@ logs/
 secrets.yml
 credentials.json
 
+# Keep .env.example committed (explicitly not ignored)
+!.env.example
+
 # Node
 node_modules/
 npm-debug.log
