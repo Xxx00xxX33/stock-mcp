@@ -7,6 +7,7 @@ import logging
 import sys
 import structlog
 
+
 def configure_logging(level: str = "INFO"):
     logging.basicConfig(
         level=getattr(logging, level.upper(), logging.INFO),
@@ -16,12 +17,14 @@ def configure_logging(level: str = "INFO"):
     structlog.configure(
         processors=[
             structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
-            structlog.processors.JSONRenderer(),
+            # 禁用 ASCII 转义以支持 emoji 表情符号的正常显示
+            structlog.processors.JSONRenderer(ensure_ascii=False),
         ],
         logger_factory=structlog.stdlib.LoggerFactory(),
         wrapper_class=structlog.stdlib.BoundLogger,
         cache_logger_on_first_use=True,
     )
+
 
 # Initialize at import time
 configure_logging()

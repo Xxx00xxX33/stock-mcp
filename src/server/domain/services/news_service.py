@@ -76,16 +76,18 @@ class NewsService:
                 "gemini-2.0-flash-exp", tools="google_search_retrieval"
             )
             response = await model.generate_content_async(query)
-            
+
             # Parse Gemini response to structured format if possible
             # For now, just return the text as a single item
-            return [{
-                "title": "Google Gemini Search Result",
-                "url": "",
-                "snippet": response.text,
-                "source": "Google Gemini",
-                "publish_time": datetime.now().isoformat()
-            }]
+            return [
+                {
+                    "title": "Google Gemini Search Result",
+                    "url": "",
+                    "snippet": response.text,
+                    "source": "Google Gemini",
+                    "publish_time": datetime.now().isoformat(),
+                }
+            ]
         except Exception as e:
             self.logger.error(f"Google Gemini error: {e}")
             raise
@@ -137,10 +139,10 @@ class NewsService:
             for r in results:
                 if "source" not in r:
                     r["source"] = source_name
-            
+
             await self.cache.set(cache_key, results, ttl=300)
             return results
-        
+
         return []
 
     async def get_breaking_news(self) -> List[Dict[str, Any]]:
@@ -158,7 +160,7 @@ class NewsService:
             search_query = f"{sector} sector financial news {today}"
         else:
             search_query = f"financial market news {today}"
-        
+
         return await self.web_search(search_query)
 
     async def _fetch_via_tavily(
@@ -178,16 +180,18 @@ class NewsService:
             resp = await self.client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
-            
+
             results = []
             for item in data.get("results", []):
-                results.append({
-                    "title": item.get("title"),
-                    "url": item.get("url"),
-                    "snippet": item.get("content"),
-                    "publish_time": item.get("published_date"),
-                    "source": "Tavily"
-                })
+                results.append(
+                    {
+                        "title": item.get("title"),
+                        "url": item.get("url"),
+                        "snippet": item.get("content"),
+                        "publish_time": item.get("published_date"),
+                        "source": "Tavily",
+                    }
+                )
             return results
         except Exception as e:
             self.logger.error(f"Tavily error: {e}")
@@ -207,19 +211,23 @@ class NewsService:
             matches = re.findall(pattern, html)
             results = []
             for link, title in matches[:10]:
-                results.append({
-                    "title": title.strip(),
-                    "url": link,
-                    "snippet": "",
-                    "source": "DuckDuckGo",
-                    "publish_time": datetime.now().isoformat()
-                })
+                results.append(
+                    {
+                        "title": title.strip(),
+                        "url": link,
+                        "snippet": "",
+                        "source": "DuckDuckGo",
+                        "publish_time": datetime.now().isoformat(),
+                    }
+                )
             return results
         except Exception as e:
             self.logger.error(f"DDG error: {e}")
             return []
 
-    async def fetch_latest_news(self, ticker: str, days_back: int = 30) -> Dict[str, Any]:
+    async def fetch_latest_news(
+        self, ticker: str, days_back: int = 30
+    ) -> Dict[str, Any]:
         """Get latest news for a ticker."""
         std_ticker = self._normalize_ticker(ticker)
         cache_key = f"news_json:{std_ticker}:{days_back}"
@@ -229,7 +237,7 @@ class NewsService:
 
         results = []
         source_name = "Unknown"
-        
+
         # Try adapter first
         news_adapter = self._get_news_adapter_for_ticker(std_ticker)
         if news_adapter:
@@ -251,8 +259,8 @@ class NewsService:
             "ticker": std_ticker,
             "source": source_name,
             "news": results,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
         await self.cache.set(cache_key, response, ttl=3600)
         return response
