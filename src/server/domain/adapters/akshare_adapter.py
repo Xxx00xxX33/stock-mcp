@@ -15,6 +15,10 @@ import akshare as ak
 import pandas as pd
 
 from src.server.domain.adapters.base import BaseDataAdapter
+from src.server.domain.cninfo_helper import (
+    _normalize_stock_code,
+    fetch_cninfo_data,
+)
 from src.server.domain.types import (
     AdapterCapability,
     Asset,
@@ -419,7 +423,7 @@ class AkshareAdapter(BaseDataAdapter):
                 if isinstance(df, Exception) or df is None or df.empty:
                     return None
                 # Convert DataFrame to list of dicts (JSON serializable)
-                return df.to_dict('records')
+                return df.to_dict("records")
 
             result = {
                 "balance_sheet": df_to_dict(balance_df),
@@ -442,11 +446,94 @@ class AkshareAdapter(BaseDataAdapter):
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         limit: int = 10,
+        filing_types: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
-        """Fetch filings/announcements."""
-        # Placeholder for now, as Akshare filings API can be unstable
-        # In future, implement using ak.stock_zh_a_gonggao or similar
-        return []
+        """Fetch A-share filings/announcements from CNINFO.
+
+        Args:
+            ticker: Stock ticker (e.g., "SSE:600519" or "600519")
+            start_date: Start date for filtering (optional)
+            end_date: End date for filtering (optional)
+            limit: Maximum number of filings to return
+            filing_types: List of filing types (e.g., ["annual", "quarterly"])
+
+        Returns:
+            List of filing dictionaries with metadata and PDF URLs
+        """
+        try:
+            # Normalize stock code
+            stock_code = _normalize_stock_code(ticker)
+
+            # Use provided filing_types or default to all
+            report_types = filing_types or ["annual", "semi-annual", "quarterly"]
+
+            # Extract years from date range or use recent years
+            years = []
+            if start_date and end_date:
+                start_year = start_date.year
+                end_year = end_date.year
+                years = list(range(start_year, end_year + 1))
+
+            # Fetch data from CNINFO
+            filings_data = await fetch_cninfo_data(
+                stock_code=stock_code,
+                report_types=report_types,
+                years=years,
+                quarters=[],  # No quarter filtering by default
+                limit=limit,
+            )
+
+            # Transform to standard format
+            results = []
+            for filing in filings_data:
+                # Filter by date if specified
+                if start_date or end_date:
+                    filing_date_str = filing.get("filing_date", "")
+                    try:
+                        filing_date = datetime.strptime(filing_date_str, "%Y-%m-%d")
+                        if start_date and filing_date < start_date:
+                            continue
+                        if end_date and filing_date > end_date:
+                            continue
+                    except ValueError:
+                        pass  # Skip date filtering if parsing fails
+
+                result = {
+                    "filing_id": filing.get("announcement_id", ""),
+                    "symbol": filing.get("stock_code", ""),
+                    "company_name": filing.get("company", ""),
+                    "exchange": filing.get("market", ""),
+                    "title": filing.get("announcement_title", ""),
+                    "type": filing.get("doc_type", ""),
+                    "form": self._map_report_type_to_form(filing.get("doc_type", "")),
+                    "filing_date": filing.get("filing_date", ""),
+                    "period_of_report": filing.get("period_of_report", ""),
+                    "url": filing.get("pdf_url", ""),
+                    "content_summary": filing.get("announcement_title", "")[:200],
+                }
+                results.append(result)
+
+            return results[:limit]
+
+        except Exception as e:
+            self.logger.error(f"Failed to fetch filings for {ticker}: {e}")
+            return []
+
+    def _map_report_type_to_form(self, doc_type: str) -> str:
+        """Map English report type to Chinese form name.
+
+        Args:
+            doc_type: Report type ("annual", "semi-annual", "quarterly")
+
+        Returns:
+            Chinese form name
+        """
+        mapping = {
+            "annual": "年报",
+            "semi-annual": "半年报",
+            "quarterly": "季报",
+        }
+        return mapping.get(doc_type, doc_type)
 
     # Keep extra methods for NewsService usage
     async def get_news(self, ticker: str, limit: int = 10) -> List[Dict[str, Any]]:

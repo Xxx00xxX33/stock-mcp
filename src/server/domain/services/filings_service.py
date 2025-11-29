@@ -17,16 +17,66 @@ class FilingsService:
         self.adapter_manager = adapter_manager
         self.logger = logger
 
-    async def fetch_sec_filings(
+    async def fetch_periodic_sec_filings(
         self,
         ticker: str,
-        filing_types: Optional[List[str]] = None,
+        forms: Optional[List[str]] = None,
+        year: Optional[int] = None,
+        quarter: Optional[int] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """Fetch SEC periodic filings (10-K/10-Q) with year/quarter.
+
+        Args:
+            ticker: US stock ticker
+            forms: Filing forms (default: ["10-Q"])
+            year: Fiscal year (e.g., 2024)
+            quarter: Fiscal quarter (1-4)
+            limit: Max results when year is omitted
+
+        Returns:
+            List of filing dictionaries
+        """
+        filing_types = forms or ["10-Q"]
+
+        # Convert year/quarter to date range for adapter
+        start_date = None
+        end_date = None
+
+        if year:
+            # Use year as date range
+            start_date = f"{year}-01-01"
+            end_date = f"{year}-12-31"
+
+        return await self._fetch_filings(
+            ticker, filing_types, start_date, end_date, limit
+        )
+
+    async def fetch_event_sec_filings(
+        self,
+        ticker: str,
+        forms: Optional[List[str]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
-        """Fetch SEC filings (US stocks)."""
-        return await self._fetch_filings(ticker, filing_types, start_date, end_date, limit)
+        """Fetch SEC event-driven filings (8-K, 3/4/5) with date range.
+
+        Args:
+            ticker: US stock ticker
+            forms: Filing forms (default: ["8-K"])
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
+            limit: Max results
+
+        Returns:
+            List of filing dictionaries
+        """
+        filing_types = forms or ["8-K"]
+
+        return await self._fetch_filings(
+            ticker, filing_types, start_date, end_date, limit
+        )
 
     async def fetch_ashare_filings(
         self,
@@ -36,22 +86,14 @@ class FilingsService:
         end_date: Optional[str] = None,
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
-        """Fetch A-share announcements."""
-        # Ensure ticker format
-        if ":" not in symbol:
-            # Try to guess or default to SSE/SZSE based on code
-            if symbol.startswith("6"):
-                ticker = f"SSE:{symbol}"
-            elif symbol.startswith(("0", "3")):
-                ticker = f"SZSE:{symbol}"
-            elif symbol.startswith("8"):
-                ticker = f"BSE:{symbol}"
-            else:
-                ticker = f"SSE:{symbol}" # Default
-        else:
-            ticker = symbol
-            
-        return await self._fetch_filings(ticker, filing_types, start_date, end_date, limit)
+        """Fetch A-share announcements.
+
+        Note: Ticker normalization is handled by AkshareAdapter.
+        """
+        # Delegate to unified method - adapter will handle format
+        return await self._fetch_filings(
+            symbol, filing_types, start_date, end_date, limit
+        )
 
     async def _fetch_filings(
         self,
@@ -61,57 +103,21 @@ class FilingsService:
         end_date_str: Optional[str],
         limit: int,
     ) -> List[Dict[str, Any]]:
-        """Internal method to fetch filings via AdapterManager."""
+        """Internal unified method to fetch filings via AdapterManager."""
         try:
-            start = datetime.strptime(start_date_str, "%Y-%m-%d") if start_date_str else None
-            end = datetime.strptime(end_date_str, "%Y-%m-%d") if end_date_str else None
-            
-            filings = await self.adapter_manager.get_filings(
-                ticker, start, end, limit
+            start = (
+                datetime.strptime(start_date_str, "%Y-%m-%d")
+                if start_date_str
+                else None
             )
-            
-            # Filter by type if needed (client-side filtering as adapters might return all)
-            if filing_types:
-                filtered = []
-                for f in filings:
-                    # Check if 'form' or 'type' matches any in filing_types
-                    ftype = f.get("form") or f.get("type") or ""
-                    if any(t.lower() in ftype.lower() for t in filing_types):
-                        filtered.append(f)
-                return filtered[:limit]
-            
+            end = datetime.strptime(end_date_str, "%Y-%m-%d") if end_date_str else None
+
+            filings = await self.adapter_manager.get_filings(
+                ticker, start, end, limit, filing_types
+            )
+
             return filings
 
         except Exception as e:
             self.logger.error(f"Failed to fetch filings for {ticker}: {e}")
             return [{"error": str(e)}]
-
-    async def get_filing_detail(self, filing_id: str, filing_source: str = "sec") -> Dict[str, Any]:
-        """Get detailed content of a filing."""
-        # This might require a separate API call or just returning the URL
-        # For now, we return a placeholder or the URL if we have it in ID
-        return {
-            "filing_id": filing_id,
-            "source": filing_source,
-            "content": "Detail retrieval not yet implemented. Please check the filing URL.",
-            "url": filing_id if filing_id.startswith("http") else None
-        }
-
-    async def search_filings_by_keyword(
-        self,
-        keyword: str,
-        market: str = "us",
-        filing_types: Optional[List[str]] = None,
-        limit: int = 20,
-    ) -> List[Dict[str, Any]]:
-        """Search filings by keyword."""
-        # This requires a search API which might not be available in standard adapters
-        # We can return a not implemented message or try to search news
-        return [{"error": "Keyword search for filings not supported by current adapters."}]
-
-    async def get_latest_earnings_reports(
-        self, market: str = "us", days: int = 7, limit: int = 50
-    ) -> List[Dict[str, Any]]:
-        """Get latest earnings reports."""
-        # This requires a calendar API
-        return [{"error": "Earnings calendar not supported by current adapters."}]

@@ -135,6 +135,7 @@ class BaseDataAdapter(abc.ABC):
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         limit: int = 10,
+        filing_types: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """Get regulatory filings/announcements."""
         raise NotImplementedError(f"{self.name} does not support filings retrieval")
@@ -148,7 +149,9 @@ class BaseDataAdapter(abc.ABC):
         Returns:
             Dictionary containing financial statements and metrics
         """
-        raise NotImplementedError(f"{self.source.value} does not support get_financials")
+        raise NotImplementedError(
+            f"{self.source.value} does not support get_financials"
+        )
 
     @abc.abstractmethod
     def get_capabilities(self) -> List[AdapterCapability]:

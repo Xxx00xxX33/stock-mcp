@@ -258,11 +258,9 @@ def get_tools_by_tag(tag: str) -> list[str]:
             "calculate_volatility",
         ],
         "filings": [
-            "fetch_sec_filings",
+            "fetch_periodic_sec_filings",
+            "fetch_event_sec_filings",
             "fetch_ashare_filings",
-            "search_filings",
-            "get_filing_details",
-            "compare_filings",
         ],
         "trade": [
             "execute_order",

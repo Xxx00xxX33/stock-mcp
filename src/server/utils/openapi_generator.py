@@ -110,11 +110,9 @@ class OpenAPIGenerator:
             "analyze_price_patterns": "Technical Tools",
             "detect_support_resistance": "Technical Tools",
             "calculate_volatility": "Technical Tools",
-            "fetch_sec_filings": "Filings Tools",
+            "fetch_periodic_sec_filings": "Filings Tools",
+            "fetch_event_sec_filings": "Filings Tools",
             "fetch_ashare_filings": "Filings Tools",
-            "search_filings": "Filings Tools",
-            "get_filing_details": "Filings Tools",
-            "compare_filings": "Filings Tools",
         }
 
         for tool_name, group in tool_groups.items():
