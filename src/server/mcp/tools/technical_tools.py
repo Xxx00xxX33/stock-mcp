@@ -12,6 +12,49 @@ from src.server.core.dependencies import Container
 from src.server.utils.logger import logger
 
 
+# ============================================================
+# 核心业务逻辑实现 (可被 MCP 和 FastAPI 共享)
+# ============================================================
+
+async def calculate_technical_indicators_impl(
+    symbol: str, 
+    period: str = "30d", 
+    interval: str = "1d"
+) -> Dict[str, Any]:
+    """
+    计算技术指标 (核心实现)
+    
+    Args:
+        symbol: 资产代码 (格式: EXCHANGE:SYMBOL)
+        period: 数据周期 (30d, 90d, 1y)
+        interval: K线间隔 (1d, 1h, 15m)
+        
+    Returns:
+        包含技术指标的字典
+        
+    Raises:
+        Exception: 计算失败时抛出异常
+    """
+    service = Container.technical_service()
+    logger.info(
+        "Calculating technical indicators",
+        symbol=symbol,
+        period=period,
+        interval=interval,
+    )
+    
+    result = await service.calculate_indicators(
+        symbol=symbol, period=period, interval=interval
+    )
+    
+    logger.info("Successfully calculated indicators", symbol=symbol)
+    return result
+
+
+# ============================================================
+# MCP 工具注册 (保持原有接口不变)
+# ============================================================
+
 def register_technical_tools(mcp: FastMCP):
     """Register technical analysis tools."""
 
@@ -39,22 +82,9 @@ def register_technical_tools(mcp: FastMCP):
             Dictionary containing calculated indicators
         """
         try:
-            service = Container.technical_service()
-            logger.info(
-                "MCP tool called: calculate_technical_indicators",
-                symbol=symbol,
-                period=period,
-                interval=interval,
-            )
-
-            result = await service.calculate_indicators(
-                symbol=symbol, period=period, interval=interval
-            )
-
-            return result
-
+            return await calculate_technical_indicators_impl(symbol, period, interval)
         except Exception as e:
-            logger.error(f"Calculate technical indicators failed: {e}")
+            logger.error(f"MCP tool error in calculate_technical_indicators: {e}", exc_info=True)
             return {"error": str(e)}
 
     @mcp.tool(tags={"technical-signal", "technical-extended"})

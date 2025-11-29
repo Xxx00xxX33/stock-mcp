@@ -15,6 +15,43 @@ from src.server.domain.types import AssetSearchQuery, AssetType
 from src.server.utils.logger import logger
 
 
+# ============================================================
+# 核心业务逻辑实现 (可被 MCP 和 FastAPI 共享)
+# ============================================================
+
+async def get_multiple_prices_impl(tickers: List[str]) -> Dict[str, Any]:
+    """
+    批量获取资产实时价格 (核心实现)
+    
+    Args:
+        tickers: 资产代码列表 (格式: EXCHANGE:SYMBOL)
+        
+    Returns:
+        Dict[ticker, price_data] - 价格数据字典
+        
+    Raises:
+        Exception: 数据获取失败时抛出异常
+    """
+    manager = Container.adapter_manager()
+    logger.info("Fetching multiple prices", count=len(tickers), tickers=tickers)
+    
+    prices = await manager.get_multiple_prices(tickers)
+    result = {}
+    for ticker, price in prices.items():
+        if price:
+            result[ticker] = price.to_dict()
+        else:
+            result[ticker] = None
+    
+    success_count = len([v for v in result.values() if v])
+    logger.info("Successfully fetched prices", success_count=success_count, total=len(tickers))
+    return result
+
+
+# ============================================================
+# MCP 工具注册 (保持原有接口不变)
+# ============================================================
+
 def register_asset_tools(mcp: FastMCP):
     """Register asset-related tools."""
 
@@ -112,20 +149,9 @@ def register_asset_tools(mcp: FastMCP):
             Dictionary mapping tickers to price data
         """
         try:
-            manager = Container.adapter_manager()
-            logger.info("MCP tool called: get_multiple_prices", count=len(tickers))
-
-            prices = await manager.get_multiple_prices(tickers)
-            result = {}
-            for ticker, price in prices.items():
-                if price:
-                    result[ticker] = price.to_dict()
-                else:
-                    result[ticker] = None
-            return result
-
+            return await get_multiple_prices_impl(tickers)
         except Exception as e:
-            logger.error(f"Get multiple prices failed: {e}")
+            logger.error(f"MCP tool error in get_multiple_prices: {e}", exc_info=True)
             return {"error": str(e)}
 
     @mcp.tool(tags={"asset-history", "asset-extended"})

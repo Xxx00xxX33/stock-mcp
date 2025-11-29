@@ -172,7 +172,7 @@ class CryptoAdapter(BaseDataAdapter):
                 source=DataSource.CRYPTO,
             )
 
-            await self.cache.set(cache_key, asset_price.to_dict(), ttl=60)
+            await self.cache.set(cache_key, asset_price.to_dict(), ttl=30)
             return asset_price
         except Exception as e:
             self.logger.warning(f"Failed to fetch price for {ticker}: {e}")

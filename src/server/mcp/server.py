@@ -59,21 +59,27 @@ async def mcp_lifespan(mcp: FastMCP):
     # Priority order for A-shares: Tushare (有token) > Akshare > Baostock
     logger.info("📦 Registering data adapters...")
     adapter_manager = Container.adapter_manager()
-    
+
     # A股数据源 - 按优先级注册
-    adapter_manager.register_adapter(Container.tushare_adapter())  # 优先: Tushare (有token)
-    adapter_manager.register_adapter(Container.akshare_adapter())  # 备选1: Akshare
-    adapter_manager.register_adapter(Container.baostock_adapter()) # 备选2: Baostock
-    
-    # 美股数据源
+    adapter_manager.register_adapter(Container.tushare_adapter())
+    adapter_manager.register_adapter(Container.akshare_adapter())
+    adapter_manager.register_adapter(Container.baostock_adapter())
+
+    # 加密货币数据源 - 优先级高于 Yahoo（避免被覆盖）
+    # 优先: CoinGecko (免费，数据准确，延迟低)
+    adapter_manager.register_adapter(Container.crypto_adapter())
+    # 备选: CCXT (交易所直连，支持OHLCV)
+    adapter_manager.register_adapter(Container.ccxt_adapter())
+
+    # 美股数据源（Yahoo 也支持加密货币，但优先级低）
     adapter_manager.register_adapter(Container.yahoo_adapter())
     adapter_manager.register_adapter(Container.finnhub_adapter())
-    
-    # 加密货币数据源
-    adapter_manager.register_adapter(Container.ccxt_adapter())    # 优先: CCXT (交易所直连，支持OHLCV)
-    adapter_manager.register_adapter(Container.crypto_adapter())  # 备选: CoinGecko (元数据丰富)
-    
-    logger.info("✅ All adapters registered (A-share priority: Tushare > Akshare > Baostock)")
+
+    logger.info(
+        "✅ All adapters registered "
+        "(Crypto: CoinGecko > CCXT > Yahoo | "
+        "A-share: Tushare > Akshare > Baostock)"
+    )
 
     yield
 
@@ -149,7 +155,6 @@ def create_mcp_server() -> FastMCP:
     logger.info("=" * 70 + "\n")
 
     return mcp
-
 
 
 def create_filtered_mcp_server(
