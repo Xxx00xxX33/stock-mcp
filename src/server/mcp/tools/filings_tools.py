@@ -29,10 +29,13 @@ def register_filings_tools(mcp: FastMCP):
         Use this for fundamental analysis and earnings tracking.
 
         Args:
-            ticker: US stock ticker (e.g., "AAPL", "TSLA")
-            forms: Filing types. Defaults to ["10-Q"]
-                - "10-K": Annual reports (most comprehensive)
-                - "10-Q": Quarterly reports
+        Args:
+            ticker: US stock ticker (e.g., "AAPL", "TSLA", "BABA")
+            forms: Filing types. Defaults to ["10-K", "10-Q", "20-F", "6-K"]
+                - "10-K": Annual reports (US companies)
+                - "10-Q": Quarterly reports (US companies)
+                - "20-F": Annual reports (Foreign Private Issuers, e.g., BABA)
+                - "6-K": Current/Quarterly reports (Foreign Private Issuers)
                 Example: ["10-K", "10-Q"]
             year: Fiscal year or list of years (e.g., 2024, [2023, 2024])
                 When omitted, returns latest filings using `limit`
@@ -91,9 +94,11 @@ def register_filings_tools(mcp: FastMCP):
         Use this for news tracking and material event monitoring.
 
         Args:
-            ticker: US stock ticker (e.g., "AAPL", "TSLA")
-            forms: Filing types. Defaults to ["8-K"]
-                - "8-K": Current reports (major events, earnings releases)
+        Args:
+            ticker: US stock ticker (e.g., "AAPL", "TSLA", "BABA")
+            forms: Filing types. Defaults to ["8-K", "6-K"]
+                - "8-K": Current reports (US companies)
+                - "6-K": Current reports (Foreign Private Issuers, e.g., BABA)
                 - "3": Initial insider ownership
                 - "4": Changes in insider ownership
                 - "5": Annual insider ownership

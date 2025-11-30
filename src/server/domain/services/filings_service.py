@@ -37,7 +37,7 @@ class FilingsService:
         Returns:
             List of filing dictionaries
         """
-        filing_types = forms or ["10-Q"]
+        filing_types = forms or ["10-K", "10-Q", "20-F", "6-K"]
 
         # Convert year/quarter to date range for adapter
         start_date = None
@@ -72,7 +72,7 @@ class FilingsService:
         Returns:
             List of filing dictionaries
         """
-        filing_types = forms or ["8-K"]
+        filing_types = forms or ["8-K", "6-K"]
 
         return await self._fetch_filings(
             ticker, filing_types, start_date, end_date, limit
