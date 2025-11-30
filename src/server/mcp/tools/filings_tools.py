@@ -210,17 +210,21 @@ def register_filings_tools(mcp: FastMCP):
         doc_id: str,
         url: str,
         doc_type: str = "unknown",
+        ticker: str = None,
     ) -> Dict[str, Any]:
         """Process a single document by URL (Download & Extract Text).
 
         This tool downloads the document content from the given URL.
         - For HTML documents (e.g., SEC filings), it extracts the text content.
         - For PDF documents (e.g., CNINFO announcements), it returns metadata indicating PDF type.
+        
+        For SEC filings (10-K, 10-Q, 8-K), `ticker` is REQUIRED to use edgartools for correct parsing.
 
         Args:
             doc_id: Unique document identifier (e.g., Accession Number)
             url: Direct URL to the document
             doc_type: Document type (e.g., "10-K", "annual")
+            ticker: Stock ticker (Required for SEC filings)
 
         Returns:
             Dictionary containing 'content' (extracted text), 'status', and metadata.
@@ -232,12 +236,14 @@ def register_filings_tools(mcp: FastMCP):
                 doc_id=doc_id,
                 url=url,
                 doc_type=doc_type,
+                ticker=ticker,
             )
 
             return await service.process_document(
                 doc_id=doc_id,
                 url=url,
                 doc_type=doc_type,
+                ticker=ticker,
             )
 
         except Exception as e:
