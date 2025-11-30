@@ -340,14 +340,26 @@ class FinnhubAdapter(BaseDataAdapter):
                     if form not in filing_types:
                         continue
 
+                accession_number = item.get("accessionNumber")
+                filing_url = item.get("filingUrl")
+                
+                # Fallback: extract accessionNumber from URL if missing
+                if not accession_number and filing_url:
+                    import re
+                    # Pattern matches standard SEC accession number format in URL
+                    # e.g. .../0001104659-25-115949-index.html
+                    match = re.search(r"(\d{10}-\d{2}-\d{6})", filing_url)
+                    if match:
+                        accession_number = match.group(1)
+
                 filings.append(
                     {
-                        "accessionNumber": item.get("accessionNumber"),
+                        "accessionNumber": accession_number,
                         "symbol": item.get("symbol"),
                         "filingDate": item.get("filedDate"),
                         "reportDate": item.get("reportDate"),
                         "form": item.get("form"),
-                        "filingUrl": item.get("filingUrl"),
+                        "filingUrl": filing_url,
                         "description": item.get("description"),
                     }
                 )
