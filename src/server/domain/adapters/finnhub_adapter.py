@@ -302,6 +302,7 @@ class FinnhubAdapter(BaseDataAdapter):
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         limit: int = 10,
+        filing_types: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """Fetch filings from Finnhub."""
         symbol = self.convert_to_source_ticker(ticker)
@@ -332,7 +333,13 @@ class FinnhubAdapter(BaseDataAdapter):
                 return []
 
             filings = []
-            for item in data[:limit]:
+            for item in data:
+                # Filter by filing types if provided
+                if filing_types:
+                    form = item.get("form", "")
+                    if form not in filing_types:
+                        continue
+
                 filings.append(
                     {
                         "accessionNumber": item.get("accessionNumber"),
@@ -344,6 +351,9 @@ class FinnhubAdapter(BaseDataAdapter):
                         "description": item.get("description"),
                     }
                 )
+                
+                if len(filings) >= limit:
+                    break
             return filings
         except Exception as e:
             self.logger.error(f"Failed to fetch filings: {e}")
