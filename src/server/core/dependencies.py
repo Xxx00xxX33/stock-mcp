@@ -85,6 +85,10 @@ class Container(containers.DeclarativeContainer):
         AdapterManager
     )
 
+    # MinIO Client
+    from src.server.infrastructure.minio_client import MinioClient
+    minio_client = providers.Singleton(MinioClient)
+
     # Services (receive adapter manager and cache)
     fundamental_service = providers.Factory(
         FundamentalService,
@@ -104,4 +108,5 @@ class Container(containers.DeclarativeContainer):
     filings_service = providers.Factory(
         FilingsService,
         adapter_manager=adapter_manager,
+        minio_client=minio_client,
     )

@@ -204,3 +204,42 @@ def register_filings_tools(mcp: FastMCP):
         except Exception as e:
             logger.error(f"Fetch A-share filings failed: {e}")
             return [{"error": str(e)}]
+
+    @mcp.tool(tags={"filings-process", "filings-core"})
+    async def process_document(
+        doc_id: str,
+        url: str,
+        doc_type: str = "unknown",
+    ) -> Dict[str, Any]:
+        """Process a single document by URL (Download & Extract Text).
+
+        This tool downloads the document content from the given URL.
+        - For HTML documents (e.g., SEC filings), it extracts the text content.
+        - For PDF documents (e.g., CNINFO announcements), it returns metadata indicating PDF type.
+
+        Args:
+            doc_id: Unique document identifier (e.g., Accession Number)
+            url: Direct URL to the document
+            doc_type: Document type (e.g., "10-K", "annual")
+
+        Returns:
+            Dictionary containing 'content' (extracted text), 'status', and metadata.
+        """
+        try:
+            service = Container.filings_service()
+            logger.info(
+                "MCP tool called: process_document",
+                doc_id=doc_id,
+                url=url,
+                doc_type=doc_type,
+            )
+
+            return await service.process_document(
+                doc_id=doc_id,
+                url=url,
+                doc_type=doc_type,
+            )
+
+        except Exception as e:
+            logger.error(f"Process document failed: {e}")
+            return {"error": str(e)}
