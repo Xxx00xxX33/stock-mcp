@@ -22,6 +22,20 @@ class FilingsService:
         from edgar import set_identity
         set_identity("ValueCell Agent <contact@valuecell.ai>")
 
+    def _extract_symbol(self, ticker: str) -> str:
+        """Extract pure symbol from EXCHANGE:SYMBOL format.
+        
+        Args:
+            ticker: Symbol in format 'EXCHANGE:SYMBOL' (e.g., 'NASDAQ:AAPL') or pure symbol
+            
+        Returns:
+            Pure symbol (e.g., 'AAPL' from 'NASDAQ:AAPL')
+        """
+        if ':' in ticker:
+            _, symbol = ticker.split(':', 1)
+            return symbol
+        return ticker
+
     async def fetch_periodic_sec_filings(
         self,
         ticker: str,
@@ -162,11 +176,15 @@ class FilingsService:
                         "error": "Ticker is required for processing SEC filings with edgartools."
                     }
                 
+                # Extract pure symbol from EXCHANGE:SYMBOL format (e.g., 'NASDAQ:AAPL' -> 'AAPL')
+                pure_symbol = self._extract_symbol(ticker)
+                self.logger.info(f"Processing SEC filing for {ticker} (pure symbol: {pure_symbol})")
+                
                 # Use edgartools to fetch and parse
                 from edgar import Company
                 
-                # 1. Initialize Company
-                company = Company(ticker)
+                # 1. Initialize Company with pure symbol
+                company = Company(pure_symbol)
                 
                 # 2. Find the specific filing
                 # edgartools doesn't support get_by_accession directly, so we fetch recent filings and filter
