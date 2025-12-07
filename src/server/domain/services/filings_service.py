@@ -348,3 +348,169 @@ class FilingsService:
                 "status": "error",
                 "error": str(e)
             }
+
+    async def get_filing_markdown(
+        self,
+        ticker: str,
+        doc_id: str,
+    ) -> Dict[str, Any]:
+        """Get SEC filing content as Markdown with MinIO caching.
+        
+        This method:
+        1. Checks if the Markdown is already cached in MinIO
+        2. If cached, returns the cached content
+        3. If not cached, fetches from SEC using edgartools, caches, and returns
+        
+        Args:
+            ticker: Stock ticker (e.g., 'AAPL' or 'NASDAQ:AAPL')
+            doc_id: SEC Accession Number (e.g., '0000320193-25-000079')
+            
+        Returns:
+            Dict with 'content' (Markdown string), 'cached' (bool), and 'status'
+        """
+        # Normalize doc_id (remove potential prefix)
+        accession_number = doc_id.replace("SEC:", "")
+        
+        # Build cache key path in MinIO
+        pure_symbol = self._extract_symbol(ticker)
+        cache_object_name = f"cache/markdown/{pure_symbol}/{accession_number}.md"
+        
+        try:
+            # 1. Check MinIO cache first
+            if self.minio_client:
+                exists = await self.minio_client.object_exists(cache_object_name)
+                if exists:
+                    self.logger.info(f"✅ Cache HIT for {ticker}/{doc_id}")
+                    cached_bytes = await self.minio_client.download_bytes(cache_object_name)
+                    if cached_bytes:
+                        return {
+                            "status": "success",
+                            "cached": True,
+                            "content": cached_bytes.decode('utf-8'),
+                            "doc_id": doc_id,
+                            "ticker": ticker,
+                        }
+            
+            self.logger.info(f"📥 Cache MISS for {ticker}/{doc_id}, fetching from SEC...")
+            
+            # 2. Fetch from SEC using edgartools
+            from edgar import Company
+            
+            company = Company(pure_symbol)
+            
+            # Search for the filing by accession number
+            filings = company.get_filings().latest(50)
+            
+            target_filing = None
+            if filings:
+                for filing in filings:
+                    if filing.accession_no == accession_number:
+                        target_filing = filing
+                        break
+            
+            if not target_filing:
+                # Try broader search
+                filings_all = company.get_filings().latest(100)
+                if filings_all:
+                    for filing in filings_all:
+                        if filing.accession_no == accession_number:
+                            target_filing = filing
+                            break
+            
+            if not target_filing:
+                return {
+                    "status": "error",
+                    "cached": False,
+                    "error": f"Filing not found: {doc_id} for {ticker}",
+                    "doc_id": doc_id,
+                    "ticker": ticker,
+                }
+            
+            # 3. Convert to Markdown
+            self.logger.info(f"🔄 Converting {accession_number} to Markdown...")
+            
+            doc_type = target_filing.form or "SEC"
+            full_markdown = f"# {doc_type} Filing: {ticker} ({target_filing.filing_date})\n\n"
+            
+            # Main document
+            try:
+                main_content = target_filing.markdown()
+                if main_content:
+                    full_markdown += "## Main Document\n\n" + main_content + "\n\n"
+            except Exception as e:
+                self.logger.warning(f"Failed to convert main document: {e}")
+            
+            # Process Attachments (important for 8-K/6-K)
+            if target_filing.attachments:
+                self.logger.info(f"Processing attachments for {accession_number}...")
+                has_attachments = False
+                
+                for attachment in target_filing.attachments:
+                    doc_type_upper = (attachment.document_type or "").upper()
+                    desc_upper = (attachment.description or "").upper()
+                    
+                    is_relevant = (
+                        doc_type_upper.startswith("EX-99") or 
+                        "PRESS RELEASE" in desc_upper or 
+                        "EARNINGS" in desc_upper or
+                        "ANNOUNCEMENT" in desc_upper or
+                        "RESULTS" in desc_upper
+                    )
+                    
+                    if is_relevant:
+                        try:
+                            att_content = attachment.markdown()
+                            if att_content:
+                                if not has_attachments:
+                                    full_markdown += "---\n\n# Attachments\n\n"
+                                    has_attachments = True
+                                    
+                                full_markdown += f"## Attachment: {attachment.document_type} - {attachment.description or ''}\n\n"
+                                full_markdown += att_content + "\n\n"
+                                self.logger.info(f"Included attachment: {attachment.document_type}")
+                        except Exception as e:
+                            self.logger.warning(f"Failed to convert attachment {attachment.document_type}: {e}")
+            
+            if not full_markdown.strip():
+                return {
+                    "status": "error",
+                    "cached": False,
+                    "error": "edgartools returned empty content",
+                    "doc_id": doc_id,
+                    "ticker": ticker,
+                }
+            
+            # 4. Cache to MinIO
+            if self.minio_client:
+                try:
+                    await self.minio_client.upload_bytes(
+                        cache_object_name,
+                        full_markdown.encode('utf-8'),
+                        "text/markdown"
+                    )
+                    self.logger.info(f"💾 Cached Markdown to MinIO: {cache_object_name}")
+                except Exception as e:
+                    self.logger.warning(f"Failed to cache to MinIO: {e}")
+            
+            return {
+                "status": "success",
+                "cached": False,
+                "content": full_markdown,
+                "doc_id": doc_id,
+                "ticker": ticker,
+                "form_type": target_filing.form,
+                "filing_date": str(target_filing.filing_date),
+            }
+            
+        except Exception as e:
+            self.logger.error(f"get_filing_markdown failed for {ticker}/{doc_id}: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            return {
+                "status": "error",
+                "cached": False,
+                "error": str(e),
+                "doc_id": doc_id,
+                "ticker": ticker,
+            }
+

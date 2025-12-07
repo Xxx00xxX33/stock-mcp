@@ -99,3 +99,52 @@ async def process_document(request: ProcessDocumentRequest):
     except Exception as e:
         # If the service raised an exception directly
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/markdown")
+async def get_filing_markdown(
+    ticker: str = Query(..., description="Stock ticker (e.g., AAPL or NASDAQ:AAPL)"),
+    doc_id: str = Query(..., description="SEC Accession Number (e.g., 0000320193-25-000079)"),
+    stream: bool = Query(False, description="If true, return plain text Markdown; otherwise return JSON"),
+):
+    """Get SEC filing content as Markdown with caching.
+    
+    This endpoint:
+    1. Checks MinIO cache for pre-converted Markdown
+    2. If cached, returns immediately (fast path)
+    3. If not cached, fetches from SEC, converts to Markdown, caches, and returns
+    
+    Use `stream=true` for plain text response (suitable for direct file download).
+    """
+    from fastapi.responses import PlainTextResponse
+    
+    service: FilingsService = Container.filings_service()
+    try:
+        result = await service.get_filing_markdown(ticker=ticker, doc_id=doc_id)
+        
+        if result.get("status") == "error":
+            raise HTTPException(
+                status_code=404 if "not found" in result.get("error", "").lower() else 500,
+                detail=result.get("error", "Unknown error")
+            )
+        
+        # Return plain text if stream=true
+        if stream:
+            return PlainTextResponse(
+                content=result.get("content", ""),
+                media_type="text/markdown",
+                headers={
+                    "X-Cached": str(result.get("cached", False)),
+                    "X-Doc-Id": doc_id,
+                    "X-Ticker": ticker,
+                }
+            )
+        
+        # Default: return JSON with metadata
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

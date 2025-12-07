@@ -67,3 +67,36 @@ class MinioClient:
     def get_presigned_url(self, object_name: str) -> str:
         """Get a presigned URL for downloading (optional usage)."""
         return self.client.get_presigned_url("GET", self.bucket_name, object_name)
+
+    async def object_exists(self, object_name: str) -> bool:
+        """Check if an object exists in MinIO."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self._object_exists_sync, object_name)
+
+    def _object_exists_sync(self, object_name: str) -> bool:
+        """Synchronous object existence check."""
+        try:
+            self.client.stat_object(self.bucket_name, object_name)
+            return True
+        except S3Error as e:
+            if e.code == "NoSuchKey":
+                return False
+            logger.error(f"MinIO stat_object failed: {e}")
+            return False
+
+    async def download_bytes(self, object_name: str) -> Optional[bytes]:
+        """Download object content as bytes."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self._download_sync, object_name)
+
+    def _download_sync(self, object_name: str) -> Optional[bytes]:
+        """Synchronous download logic."""
+        try:
+            response = self.client.get_object(self.bucket_name, object_name)
+            data = response.read()
+            response.close()
+            response.release_conn()
+            return data
+        except S3Error as e:
+            logger.error(f"MinIO download failed: {e}")
+            return None
