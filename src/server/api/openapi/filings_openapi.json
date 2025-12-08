@@ -438,6 +438,81 @@
                     }
                 }
             }
+        },
+        "/filings/chunks": {
+            "get": {
+                "tags": ["Document Processing"],
+                "summary": "Get SEC filing semantic chunks",
+                "description": "Get SEC filing content as semantic chunks with item labels. Uses edgartools' ChunkedDocument for intelligent chunking based on document structure. Each chunk includes rich metadata for precise RAG filtering.",
+                "operationId": "getDocumentChunks",
+                "parameters": [
+                    {
+                        "name": "ticker",
+                        "in": "query",
+                        "required": true,
+                        "description": "Stock ticker with optional exchange prefix (e.g., AAPL or NASDAQ:AAPL)",
+                        "schema": {
+                            "type": "string",
+                            "example": "AAPL"
+                        }
+                    },
+                    {
+                        "name": "doc_id",
+                        "in": "query",
+                        "required": true,
+                        "description": "SEC Accession Number (e.g., 0000320193-25-000079)",
+                        "schema": {
+                            "type": "string",
+                            "example": "0000320193-25-000079"
+                        }
+                    },
+                    {
+                        "name": "items",
+                        "in": "query",
+                        "required": false,
+                        "description": "Optional list of items to extract (e.g., Item 1A, Item 7). Defaults to [Item 1, Item 1A, Item 7, Item 7A, Item 8]",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "example": ["Item 1A", "Item 7", "Item 8"]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Document chunks with metadata",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChunksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Filing not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -655,6 +730,120 @@
                         "type": "string",
                         "description": "Error message",
                         "example": "Filing not found for ticker: AAPL"
+                    }
+                }
+            },
+            "ChunksResponse": {
+                "type": "object",
+                "description": "Response containing document chunks with metadata",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": ["success", "error"],
+                        "example": "success"
+                    },
+                    "doc_id": {
+                        "type": "string",
+                        "description": "SEC Accession Number",
+                        "example": "0000320193-24-000123"
+                    },
+                    "ticker": {
+                        "type": "string",
+                        "description": "Stock ticker",
+                        "example": "AAPL"
+                    },
+                    "form": {
+                        "type": "string",
+                        "description": "Filing form type",
+                        "example": "10-K"
+                    },
+                    "filing_date": {
+                        "type": "string",
+                        "description": "Filing date",
+                        "example": "2024-11-01"
+                    },
+                    "chunks_count": {
+                        "type": "integer",
+                        "description": "Total number of chunks",
+                        "example": 150
+                    },
+                    "fallback": {
+                        "type": "boolean",
+                        "description": "Whether fallback chunking was used",
+                        "example": false
+                    },
+                    "chunks": {
+                        "type": "array",
+                        "description": "List of document chunks",
+                        "items": {
+                            "$ref": "#/components/schemas/DocumentChunk"
+                        }
+                    },
+                    "error": {
+                        "type": "string",
+                        "description": "Error message if status is error"
+                    }
+                },
+                "required": ["status"]
+            },
+            "DocumentChunk": {
+                "type": "object",
+                "description": "A semantic chunk from a SEC filing",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": "The chunk content text",
+                        "example": "Risk factors include competition in the technology industry..."
+                    },
+                    "metadata": {
+                        "$ref": "#/components/schemas/ChunkMetadata"
+                    }
+                },
+                "required": ["text", "metadata"]
+            },
+            "ChunkMetadata": {
+                "type": "object",
+                "description": "Metadata for a document chunk",
+                "properties": {
+                    "ticker": {
+                        "type": "string",
+                        "description": "Stock ticker",
+                        "example": "AAPL"
+                    },
+                    "doc_id": {
+                        "type": "string",
+                        "description": "SEC Accession Number",
+                        "example": "0000320193-24-000123"
+                    },
+                    "form": {
+                        "type": "string",
+                        "description": "Filing form type",
+                        "example": "10-K"
+                    },
+                    "item": {
+                        "type": "string",
+                        "description": "SEC Item section (e.g., Item 1A for Risk Factors)",
+                        "example": "Item 1A"
+                    },
+                    "item_name": {
+                        "type": "string",
+                        "description": "Human-readable item name",
+                        "example": "Risk Factors"
+                    },
+                    "filing_date": {
+                        "type": "string",
+                        "description": "Filing date",
+                        "example": "2024-11-01"
+                    },
+                    "chunk_index": {
+                        "type": "integer",
+                        "description": "Global chunk index in the document",
+                        "example": 5
+                    },
+                    "item_chunk_index": {
+                        "type": "integer",
+                        "description": "Chunk index within the item section",
+                        "example": 2
                     }
                 }
             }
