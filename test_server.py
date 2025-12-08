@@ -11,7 +11,7 @@ def test_import():
     """Test that all imports work."""
     print("Testing imports...")
     try:
-        from src.server.mcp.smithery_server import create_server, ConfigSchema
+        from server.mcp.smithery_server import create_server, ConfigSchema
         print("✓ Imports successful")
         return True
     except Exception as e:
@@ -23,7 +23,7 @@ def test_config_schema():
     """Test that ConfigSchema is valid."""
     print("\nTesting ConfigSchema...")
     try:
-        from src.server.mcp.smithery_server import ConfigSchema
+        from server.mcp.smithery_server import ConfigSchema
         
         # Test with empty config
         config = ConfigSchema()
@@ -45,7 +45,7 @@ def test_server_creation():
     """Test that server can be created."""
     print("\nTesting server creation...")
     try:
-        from src.server.mcp.smithery_server import create_server
+        from server.mcp.smithery_server import create_server
         
         # Create server
         mcp = create_server()

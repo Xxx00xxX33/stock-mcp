@@ -3,7 +3,7 @@ requires = ["uv_build>=0.8.15,<0.9.0"]
 build-backend = "uv_build"
 
 [project]
-name = "stock_mcp"
+name = "stock-mcp-server"
 version = "1.0.0"
 description = "A powerful MCP server for financial market data, technical analysis and fundamental research"
 readme = "README.md"
@@ -41,4 +41,4 @@ dev = "smithery.cli.dev:main"
 playground = "smithery.cli.playground:main"
 
 [tool.smithery]
-server = "src.server.mcp.smithery_server:create_server"
+server = "server.mcp.smithery_server:create_server"

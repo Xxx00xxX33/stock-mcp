@@ -17,7 +17,7 @@ def test_required_files():
         ".env.example",
         ".gitignore",
         "README_SMITHERY.md",
-        "src/server/mcp/smithery_server.py",
+        "server/mcp/smithery_server.py",
     ]
     
     all_exist = True
@@ -77,7 +77,7 @@ def test_pyproject_toml():
         # Check server entry point
         if all_passed:
             server_entry = data["tool"]["smithery"].get("server")
-            if server_entry == "src.server.mcp.smithery_server:create_server":
+            if server_entry == "server.mcp.smithery_server:create_server":
                 print(f"  ✓ Server entry point: {server_entry}")
             else:
                 print(f"  ✗ Server entry point incorrect: {server_entry}")
@@ -94,7 +94,7 @@ def test_server_file():
     print("\nTesting smithery_server.py structure...")
     
     try:
-        with open("src/server/mcp/smithery_server.py", "r") as f:
+        with open("server/mcp/smithery_server.py", "r") as f:
             content = f.read()
         
         checks = [
