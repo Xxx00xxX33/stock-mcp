@@ -8,9 +8,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
-from src.server.domain.adapter_manager import AdapterManager
-from src.server.infrastructure.connections.redis_connection import RedisConnection
-from src.server.utils.logger import logger
+from server.domain.adapter_manager import AdapterManager
+from server.infrastructure.connections.redis_connection import RedisConnection
+from server.utils.logger import logger
 
 
 class SimulationService:

@@ -4,7 +4,7 @@ import os
 from typing import Optional, BinaryIO
 from minio import Minio
 from minio.error import S3Error
-from src.server.utils.logger import logger
+from server.utils.logger import logger
 
 class MinioClient:
     """Async wrapper for MinIO client."""

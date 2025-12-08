@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
-from src.server.domain.types import (
+from server.domain.types import (
     AdapterCapability,
     Asset,
     AssetPrice,

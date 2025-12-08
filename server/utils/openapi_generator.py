@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 from pathlib import Path
 
 from fastmcp import FastMCP
-from src.server.utils.logger import logger
+from server.utils.logger import logger
 
 
 class OpenAPIGenerator:

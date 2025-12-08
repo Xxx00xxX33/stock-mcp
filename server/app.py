@@ -17,11 +17,11 @@ Architecture:
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.server.mcp.server import create_mcp_server
-from src.server.core.health import router as health_router
-from src.server.api.routes import market_data_router, filings_router
-from src.server.core.dependencies import Container
-from src.server.utils.logger import logger
+from server.mcp.server import create_mcp_server
+from server.core.health import router as health_router
+from server.api.routes import market_data_router, filings_router
+from server.core.dependencies import Container
+from server.utils.logger import logger
 
 
 def create_app():

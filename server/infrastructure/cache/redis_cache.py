@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import aiocache
 from aiocache import Cache
-from src.server.infrastructure.connections.redis_connection import RedisConnection
+from server.infrastructure.connections.redis_connection import RedisConnection
 
 logger = logging.getLogger(__name__)
 

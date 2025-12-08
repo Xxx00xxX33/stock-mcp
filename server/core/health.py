@@ -4,8 +4,8 @@ Returns overall status, connection health, and cache health.
 """
 
 from fastapi import APIRouter
-from src.server.core.dependencies import Container
-from src.server.utils.logger import logger
+from server.core.dependencies import Container
+from server.utils.logger import logger
 
 router = APIRouter()
 

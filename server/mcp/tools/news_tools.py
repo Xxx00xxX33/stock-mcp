@@ -8,8 +8,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from fastmcp import FastMCP
 
-from src.server.core.dependencies import Container
-from src.server.utils.logger import logger
+from server.core.dependencies import Container
+from server.utils.logger import logger
 
 
 def register_news_tools(mcp: FastMCP):

@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from fastmcp import FastMCP
 
-from src.server.utils.logger import logger
+from server.utils.logger import logger
 
 
 def _chunk_to_text(chunk_obj) -> str:

@@ -2,8 +2,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from src.server.core.dependencies import Container
-from src.server.domain.services.filings_service import FilingsService
+from server.core.dependencies import Container
+from server.domain.services.filings_service import FilingsService
 
 router = APIRouter(prefix="/filings", tags=["filings"])
 
@@ -201,7 +201,7 @@ async def get_document_chunks_stream(
     """
     from fastapi.responses import StreamingResponse
     from edgar import Company, set_identity
-    from src.server.utils.logger import logger
+    from server.utils.logger import logger
     import json
     
     set_identity("ValueCell Agent <contact@valuecell.ai>")
@@ -405,7 +405,7 @@ async def get_document_chunks_stream(
 
 async def _api_fallback_chunking(filing, ticker: str, doc_id: str) -> dict:
     """Fallback chunking using markdown."""
-    from src.server.utils.logger import logger
+    from server.utils.logger import logger
     
     try:
         markdown_content = filing.markdown()

@@ -7,7 +7,7 @@ Returns structured data (JSON).
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from src.server.utils.logger import logger
+from server.utils.logger import logger
 
 
 class FilingsService:

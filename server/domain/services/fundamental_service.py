@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from src.server.utils.logger import logger
+from server.utils.logger import logger
 
 
 class FinancialRatios:

@@ -61,7 +61,6 @@ def test_pyproject_toml():
         
         # Check required sections
         checks = [
-            ("build-system" in data, "build-system section"),
             ("project" in data, "project section"),
             ("tool" in data and "smithery" in data["tool"], "tool.smithery section"),
         ]

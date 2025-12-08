@@ -14,12 +14,12 @@ from typing import Any, Dict, List, Optional
 import akshare as ak
 import pandas as pd
 
-from src.server.domain.adapters.base import BaseDataAdapter
-from src.server.domain.cninfo_helper import (
+from server.domain.adapters.base import BaseDataAdapter
+from server.domain.cninfo_helper import (
     _normalize_stock_code,
     fetch_cninfo_data,
 )
-from src.server.domain.types import (
+from server.domain.types import (
     AdapterCapability,
     Asset,
     AssetPrice,
@@ -31,7 +31,7 @@ from src.server.domain.types import (
     MarketInfo,
     MarketStatus,
 )
-from src.server.utils.logger import logger
+from server.utils.logger import logger
 
 
 class AkshareAdapter(BaseDataAdapter):

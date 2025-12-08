@@ -10,9 +10,9 @@ import asyncio
 
 from fastmcp import FastMCP
 
-from src.server.core.dependencies import Container
-from src.server.domain.types import AssetSearchQuery, AssetType
-from src.server.utils.logger import logger
+from server.core.dependencies import Container
+from server.domain.types import AssetSearchQuery, AssetType
+from server.utils.logger import logger
 
 
 # ============================================================

@@ -11,8 +11,8 @@ from smithery.decorators import smithery
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from src.server.core.dependencies import Container
-from src.server.utils.logger import logger
+from server.core.dependencies import Container
+from server.utils.logger import logger
 
 
 class ConfigSchema(BaseModel):
@@ -53,14 +53,14 @@ def create_server():
     )
     
     # Import tool registration functions
-    from src.server.mcp.tools.fundamental_tools import register_fundamental_tools
-    from src.server.mcp.tools.news_tools import register_news_tools
-    from src.server.mcp.tools.research_tools import register_research_tools
-    from src.server.mcp.tools.asset_tools import register_asset_tools
-    from src.server.mcp.tools.technical_tools import register_technical_tools
-    from src.server.mcp.tools.filings_tools import register_filings_tools
-    from src.server.mcp.tools.trade_tools import register_trade_tools
-    from src.server.mcp.tools.chunking_tools import register_chunking_tools
+    from server.mcp.tools.fundamental_tools import register_fundamental_tools
+    from server.mcp.tools.news_tools import register_news_tools
+    from server.mcp.tools.research_tools import register_research_tools
+    from server.mcp.tools.asset_tools import register_asset_tools
+    from server.mcp.tools.technical_tools import register_technical_tools
+    from server.mcp.tools.filings_tools import register_filings_tools
+    from server.mcp.tools.trade_tools import register_trade_tools
+    from server.mcp.tools.chunking_tools import register_chunking_tools
     
     # Register all tools
     logger.info("📦 Registering tool groups...")

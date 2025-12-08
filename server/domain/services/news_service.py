@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
-from src.server.utils.logger import logger
+from server.utils.logger import logger
 
 
 class NewsService:

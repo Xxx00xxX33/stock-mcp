@@ -5,29 +5,29 @@ Modules can obtain instances via `Container.xxx()`.
 """
 
 from dependency_injector import containers, providers
-from src.server.config.settings import get_settings
-from src.server.infrastructure.connections.redis_connection import RedisConnection
-from src.server.infrastructure.connections.tushare_connection import TushareConnection
-from src.server.infrastructure.connections.finnhub_connection import FinnhubConnection
-from src.server.infrastructure.connections.baostock_connection import BaostockConnection
+from server.config.settings import get_settings
+from server.infrastructure.connections.redis_connection import RedisConnection
+from server.infrastructure.connections.tushare_connection import TushareConnection
+from server.infrastructure.connections.finnhub_connection import FinnhubConnection
+from server.infrastructure.connections.baostock_connection import BaostockConnection
 
 # Adapters (import lazily to avoid heavy imports at container init)
-from src.server.domain.adapters.yahoo_adapter import YahooAdapter
-from src.server.domain.adapters.akshare_adapter import AkshareAdapter
-from src.server.domain.adapters.crypto_adapter import CryptoAdapter
-from src.server.domain.adapters.tushare_adapter import TushareAdapter
-from src.server.domain.adapters.finnhub_adapter import FinnhubAdapter
-from src.server.domain.adapters.baostock_adapter import BaostockAdapter
-from src.server.domain.adapters.ccxt_adapter import CCXTAdapter
+from server.domain.adapters.yahoo_adapter import YahooAdapter
+from server.domain.adapters.akshare_adapter import AkshareAdapter
+from server.domain.adapters.crypto_adapter import CryptoAdapter
+from server.domain.adapters.tushare_adapter import TushareAdapter
+from server.domain.adapters.finnhub_adapter import FinnhubAdapter
+from server.domain.adapters.baostock_adapter import BaostockAdapter
+from server.domain.adapters.ccxt_adapter import CCXTAdapter
 
 # Services
-from src.server.domain.services.fundamental_service import FundamentalService
-from src.server.domain.services.news_service import NewsService
-from src.server.domain.services.technical_service import TechnicalService
-from src.server.domain.services.filings_service import FilingsService
+from server.domain.services.fundamental_service import FundamentalService
+from server.domain.services.news_service import NewsService
+from server.domain.services.technical_service import TechnicalService
+from server.domain.services.filings_service import FilingsService
 
 # Cache wrapper (aiocache)
-from src.server.infrastructure.cache.redis_cache import AsyncRedisCache
+from server.infrastructure.cache.redis_cache import AsyncRedisCache
 
 
 class Container(containers.DeclarativeContainer):
@@ -79,14 +79,14 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Adapter manager
-    from src.server.domain.adapter_manager import AdapterManager
+    from server.domain.adapter_manager import AdapterManager
 
     adapter_manager = providers.Singleton(
         AdapterManager
     )
 
     # MinIO Client
-    from src.server.infrastructure.minio_client import MinioClient
+    from server.infrastructure.minio_client import MinioClient
     minio_client = providers.Singleton(MinioClient)
 
     # Services (receive adapter manager and cache)

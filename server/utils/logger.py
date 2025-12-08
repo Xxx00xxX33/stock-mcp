@@ -1,7 +1,7 @@
 # src/server/utils/logger.py
 """Structured logging configuration using structlog.
 All modules should import logger via:
-    from src.server.utils.logger import logger
+    from server.utils.logger import logger
 """
 import logging
 import sys

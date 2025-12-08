@@ -8,14 +8,14 @@ Provides RESTful HTTP endpoints for:
 
 from fastapi import APIRouter, HTTPException, status
 from typing import Dict, Any
-from src.server.utils.logger import logger
+from server.utils.logger import logger
 
 # 导入核心实现函数
-from src.server.mcp.tools.asset_tools import get_multiple_prices_impl
-from src.server.mcp.tools.technical_tools import calculate_technical_indicators_impl
+from server.mcp.tools.asset_tools import get_multiple_prices_impl
+from server.mcp.tools.technical_tools import calculate_technical_indicators_impl
 
 # 导入请求模型
-from src.server.api.models.requests import (
+from server.api.models.requests import (
     GetMultiplePricesRequest,
     CalculateTechnicalIndicatorsRequest
 )
