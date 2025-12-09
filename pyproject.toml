@@ -37,4 +37,4 @@ dev = "smithery.cli.dev:main"
 playground = "smithery.cli.playground:main"
 
 [tool.smithery]
-server = "server.mcp.smithery_server:create_server"
+server = "server.mcp.smithery_server_minimal:create_server"
