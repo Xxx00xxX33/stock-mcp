@@ -13,6 +13,7 @@ from typing import Optional
 
 from server.core.dependencies import Container
 from server.utils.logger import logger
+from server.mcp.init_helper import InitializationHelper
 
 
 class ConfigSchema(BaseModel):

@@ -12,10 +12,12 @@ from fastmcp import FastMCP
 
 from server.core.dependencies import Container
 from server.utils.logger import logger
+from server.mcp.init_helper import ensure_initialized
 
 
 def register_research_tools(mcp: FastMCP):
     @mcp.tool(tags={"research", "analysis", "core"})
+    @ensure_initialized
     async def perform_deep_research(symbol: str, days_back: int = 30) -> Dict[str, Any]:
         """Generate a deep research report for `symbol`.
 

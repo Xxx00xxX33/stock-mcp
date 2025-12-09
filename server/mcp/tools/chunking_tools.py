@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from fastmcp import FastMCP
 
 from server.utils.logger import logger
+from server.mcp.init_helper import ensure_initialized
 
 
 def _chunk_to_text(chunk_obj) -> str:
@@ -44,6 +45,7 @@ def register_chunking_tools(mcp: FastMCP):
     """Register document chunking tools."""
 
     @mcp.tool(tags={"chunking", "rag-core"})
+    @ensure_initialized
     async def get_document_chunks(
         ticker: str,
         doc_id: str,

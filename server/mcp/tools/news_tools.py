@@ -10,10 +10,12 @@ from fastmcp import FastMCP
 
 from server.core.dependencies import Container
 from server.utils.logger import logger
+from server.mcp.init_helper import ensure_initialized
 
 
 def register_news_tools(mcp: FastMCP):
     @mcp.tool(tags={"news-stock"})
+    @ensure_initialized
     async def get_stock_news(symbol: str, days_back: int = 7) -> Dict[str, Any]:
         """Get professional stock news.
 

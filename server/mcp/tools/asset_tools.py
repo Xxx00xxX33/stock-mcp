@@ -13,6 +13,7 @@ from fastmcp import FastMCP
 from server.core.dependencies import Container
 from server.domain.types import AssetSearchQuery, AssetType
 from server.utils.logger import logger
+from server.mcp.init_helper import ensure_initialized
 
 
 # ============================================================
@@ -56,6 +57,7 @@ def register_asset_tools(mcp: FastMCP):
     """Register asset-related tools."""
 
     @mcp.tool(tags={"asset-search", "asset-extended"})
+    @ensure_initialized
     async def search_assets(
         query: str, asset_types: list[str] = None, limit: int = 10
     ) -> List[Dict[str, Any]]:
@@ -93,6 +95,7 @@ def register_asset_tools(mcp: FastMCP):
             return [{"error": str(e)}]
 
     @mcp.tool(tags={"asset-info", "asset-extended"})
+    @ensure_initialized
     async def get_asset_info(ticker: str) -> Dict[str, Any]:
         """Get detailed asset information.
 
@@ -116,6 +119,7 @@ def register_asset_tools(mcp: FastMCP):
             return {"error": str(e)}
 
     @mcp.tool(tags={"asset-price", "asset-extended"})
+    @ensure_initialized
     async def get_real_time_price(ticker: str) -> Dict[str, Any]:
         """Get real-time price for an asset.
 
@@ -139,6 +143,7 @@ def register_asset_tools(mcp: FastMCP):
             return {"error": str(e)}
 
     @mcp.tool(tags={"asset-price-batch", "asset-extended"})
+    @ensure_initialized
     async def get_multiple_prices(tickers: list[str]) -> Dict[str, Any]:
         """Get real-time prices for multiple assets.
 
@@ -155,6 +160,7 @@ def register_asset_tools(mcp: FastMCP):
             return {"error": str(e)}
 
     @mcp.tool(tags={"asset-history", "asset-extended"})
+    @ensure_initialized
     async def get_historical_prices(
         ticker: str, start_date: str, end_date: str, interval: str = "1d"
     ) -> List[Dict[str, Any]]:
@@ -194,6 +200,7 @@ def register_asset_tools(mcp: FastMCP):
             return [{"error": str(e)}]
 
     @mcp.tool(tags={"market-report", "asset-extended"})
+    @ensure_initialized
     async def get_market_report(symbol: str) -> Dict[str, Any]:
         """Get a comprehensive market report for the given ticker.
         Includes current price and asset info.

@@ -10,12 +10,14 @@ from fastmcp import FastMCP
 
 from server.core.dependencies import Container
 from server.utils.logger import logger
+from server.mcp.init_helper import ensure_initialized
 
 
 def register_filings_tools(mcp: FastMCP):
     """Register filings tools."""
 
     @mcp.tool(tags={"filings-sec-periodic", "filings-core"})
+    @ensure_initialized
     async def fetch_periodic_sec_filings(
         ticker: str,
         forms: list[str] = None,
@@ -81,6 +83,7 @@ def register_filings_tools(mcp: FastMCP):
             return [{"error": str(e)}]
 
     @mcp.tool(tags={"filings-sec-event", "filings-core"})
+    @ensure_initialized
     async def fetch_event_sec_filings(
         ticker: str,
         forms: list[str] = None,
@@ -146,6 +149,7 @@ def register_filings_tools(mcp: FastMCP):
             return [{"error": str(e)}]
 
     @mcp.tool(tags={"filings-ashare", "filings-extended"})
+    @ensure_initialized
     async def fetch_ashare_filings(
         symbol: str,
         filing_types: list[str] = None,
@@ -206,6 +210,7 @@ def register_filings_tools(mcp: FastMCP):
             return [{"error": str(e)}]
 
     @mcp.tool(tags={"filings-process", "filings-core"})
+    @ensure_initialized
     async def process_document(
         doc_id: str,
         url: str,

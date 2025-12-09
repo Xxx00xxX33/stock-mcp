@@ -10,10 +10,12 @@ from fastmcp import FastMCP
 
 from server.core.dependencies import Container
 from server.utils.logger import logger
+from server.mcp.init_helper import ensure_initialized
 
 
 def register_fundamental_tools(mcp: FastMCP):
     @mcp.tool(tags={"fundamental-financial", "fundamental-core"})
+    @ensure_initialized
     async def get_financial_report(symbol: str) -> Dict[str, Any]:
         """Get financial report for the given ticker.
 

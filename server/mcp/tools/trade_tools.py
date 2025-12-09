@@ -9,12 +9,14 @@ from fastmcp import FastMCP
 
 from server.core.dependencies import Container
 from server.utils.logger import logger
+from server.mcp.init_helper import ensure_initialized
 
 
 def register_trade_tools(mcp: FastMCP):
     """Register trade-related tools."""
 
     @mcp.tool(tags={"trade", "execution"})
+    @ensure_initialized
     async def execute_order(
         symbol: str,
         side: str,
@@ -60,6 +62,7 @@ def register_trade_tools(mcp: FastMCP):
         }
 
     @mcp.tool(tags={"trade", "account"})
+    @ensure_initialized
     async def get_account_balance(exchange_id: Optional[str] = None) -> Dict[str, Any]:
         """Get account balance.
 

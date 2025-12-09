@@ -10,6 +10,7 @@ from fastmcp import FastMCP
 
 from server.core.dependencies import Container
 from server.utils.logger import logger
+from server.mcp.init_helper import ensure_initialized
 
 
 # ============================================================
@@ -59,6 +60,7 @@ def register_technical_tools(mcp: FastMCP):
     """Register technical analysis tools."""
 
     @mcp.tool(tags={"technical-indicators", "technical-extended"})
+    @ensure_initialized
     async def calculate_technical_indicators(
         symbol: str, period: str = "30d", interval: str = "1d"
     ) -> Dict[str, Any]:
@@ -88,6 +90,7 @@ def register_technical_tools(mcp: FastMCP):
             return {"error": str(e)}
 
     @mcp.tool(tags={"technical-signal", "technical-extended"})
+    @ensure_initialized
     async def generate_trading_signal(
         symbol: str, period: str = "30d", interval: str = "1d"
     ) -> Dict[str, Any]:
@@ -118,6 +121,7 @@ def register_technical_tools(mcp: FastMCP):
             return {"error": str(e)}
 
     @mcp.tool(tags={"technical-pattern", "technical-extended"})
+    @ensure_initialized
     async def analyze_price_patterns(symbol: str, period: str = "90d") -> Dict[str, Any]:
         """Analyze price patterns.
 
@@ -143,6 +147,7 @@ def register_technical_tools(mcp: FastMCP):
             return {"error": str(e)}
 
     @mcp.tool(tags={"technical-support", "technical-extended"})
+    @ensure_initialized
     async def calculate_support_resistance(symbol: str, period: str = "90d") -> Dict[str, Any]:
         """Calculate support and resistance levels.
 
@@ -172,6 +177,7 @@ def register_technical_tools(mcp: FastMCP):
             return {"error": str(e)}
 
     @mcp.tool(tags={"technical-volume", "technical-extended"})
+    @ensure_initialized
     async def analyze_volume_profile(symbol: str, period: str = "90d") -> Dict[str, Any]:
         """Analyze volume profile.
 
