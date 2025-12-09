@@ -1,3 +1,5 @@
+**Last Updated: 2025-12-09**
+
 # Stock Tool MCP Server
 
 <div align="center">
