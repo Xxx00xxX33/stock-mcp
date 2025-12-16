@@ -7,6 +7,7 @@ import builtins
 import logging
 import sys
 import json
+import re
 from functools import partial
 
 # 导入本地服务
@@ -38,6 +39,78 @@ try:
 except ImportError as e:
     logger.error(f"❌ FastMCP未安装: {e}")
     sys.exit(1)
+
+
+def sanitize_string(text):
+    """清理字符串中的控制字符和非法字符，确保符合 JSON 规范"""
+    if not isinstance(text, str):
+        return text
+    
+    # 移除控制字符（除了换行、回车、制表符）
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+    
+    # 确保字符串是有效的 UTF-8
+    try:
+        text = text.encode('utf-8', errors='ignore').decode('utf-8')
+    except Exception:
+        pass
+    
+    return text
+
+
+def safe_json_response(data, max_length=100000):
+    """
+    安全地将数据转换为 JSON 字符串，确保符合 MCP 规范
+    
+    Args:
+        data: 要转换的数据（字符串、字典、列表等）
+        max_length: 最大返回长度，默认 100KB
+    
+    Returns:
+        符合规范的字符串
+    """
+    try:
+        # 如果已经是字符串，清理并返回
+        if isinstance(data, str):
+            cleaned = sanitize_string(data)
+            if len(cleaned) > max_length:
+                cleaned = cleaned[:max_length] + "\n\n... (内容过长，已截断)"
+            return cleaned
+        
+        # 如果是字典或列表，转换为 JSON
+        if isinstance(data, (dict, list)):
+            # 递归清理字符串字段
+            def clean_recursive(obj):
+                if isinstance(obj, str):
+                    return sanitize_string(obj)
+                elif isinstance(obj, dict):
+                    return {k: clean_recursive(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [clean_recursive(item) for item in obj]
+                else:
+                    return obj
+            
+            cleaned_data = clean_recursive(data)
+            json_str = json.dumps(cleaned_data, ensure_ascii=False, indent=2, default=str)
+            
+            if len(json_str) > max_length:
+                # 如果太长，尝试不缩进
+                json_str = json.dumps(cleaned_data, ensure_ascii=False, default=str)
+                if len(json_str) > max_length:
+                    json_str = json_str[:max_length] + "\n... (内容过长，已截断)"
+            
+            return json_str
+        
+        # 其他类型，转换为字符串
+        result = str(data)
+        result = sanitize_string(result)
+        if len(result) > max_length:
+            result = result[:max_length] + "\n... (内容过长，已截断)"
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ JSON 转换失败: {e}")
+        return f"❌ 数据格式化失败: {str(e)}"
 
 
 def clean_dataframe_for_json(df):
@@ -188,7 +261,7 @@ class StockMCPServer:
                     report = self.market_service.generate_market_report(
                         symbol, start_date, end_date
                     )
-                    return report
+                    return safe_json_response(report)
                 else:
                     return "❌ 市场数据服务当前不可用"
 
@@ -212,7 +285,7 @@ class StockMCPServer:
                     report = self.fundamentals_service.generate_fundamental_report(
                         symbol
                     )
-                    return report
+                    return safe_json_response(report)
                 else:
                     return "❌ 基本面分析服务当前不可用"
 
@@ -273,7 +346,7 @@ class StockMCPServer:
                 if len(news_list) > 20:
                     report += f"\n*还有 {len(news_list) - 20} 条新闻未显示*\n"
 
-                return report
+                return safe_json_response(report)
 
             except Exception as e:
                 logger.error(f"获取最新新闻失败: {e}")
@@ -306,7 +379,7 @@ class StockMCPServer:
                     error_msg = result.get("error", "获取新闻失败")
                     return f"❌ 获取 {symbol} 新闻失败: {error_msg}"
 
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取指定日期新闻失败: {e}")
@@ -335,7 +408,7 @@ class StockMCPServer:
                     quote_dict = quote_dto.dict()
                 else:
                     quote_dict = dict(quote_dto)
-                return json.dumps(quote_dict, ensure_ascii=False, indent=2, default=str)
+                return safe_json_response(quote_dict)
 
             except Exception as e:
                 logger.error(f"获取股票行情数据失败: {e}")
@@ -368,7 +441,7 @@ class StockMCPServer:
                         quote_dicts.append(quote_dto.dict())
                     else:
                         quote_dicts.append(dict(quote_dto))
-                return json.dumps(quote_dicts, ensure_ascii=False, indent=2, default=str)
+                return safe_json_response(quote_dicts)
 
             except Exception as e:
                 logger.error(f"批量获取股票行情数据失败: {e}")
@@ -396,7 +469,7 @@ class StockMCPServer:
                 result = self.calendar_service.get_trading_days(
                     symbol, start_date, end_date
                 )
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取交易日失败: {e}")
@@ -419,7 +492,7 @@ class StockMCPServer:
                     return "❌ 日历服务当前不可用"
 
                 result = self.calendar_service.is_trading_day(symbol, check_date)
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"检查交易日失败: {e}")
@@ -442,7 +515,7 @@ class StockMCPServer:
                     return "❌ 日历服务当前不可用"
 
                 result = self.calendar_service.get_trading_hours(symbol, check_date)
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取交易时间失败: {e}")
@@ -460,7 +533,7 @@ class StockMCPServer:
                     return "❌ 日历服务当前不可用"
 
                 result = self.calendar_service.get_supported_exchanges()
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取交易所列表失败: {e}")
@@ -494,7 +567,7 @@ class StockMCPServer:
                 for indicator, df in dashboard_data["data"].items():
                     result["data"][indicator] = clean_dataframe_for_json(df)
 
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取智能宏观数据仪表板失败: {e}")
@@ -523,7 +596,7 @@ class StockMCPServer:
                 )
 
                 result = clean_dataframe_for_json(data)
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取GDP数据失败: {e}")
@@ -552,7 +625,7 @@ class StockMCPServer:
                 )
 
                 result = clean_dataframe_for_json(data)
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取CPI数据失败: {e}")
@@ -581,7 +654,7 @@ class StockMCPServer:
                 )
 
                 result = clean_dataframe_for_json(data)
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取PPI数据失败: {e}")
@@ -610,7 +683,7 @@ class StockMCPServer:
                 )
 
                 result = clean_dataframe_for_json(data)
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取PMI数据失败: {e}")
@@ -639,7 +712,7 @@ class StockMCPServer:
                 )
 
                 result = clean_dataframe_for_json(data)
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取货币供应量数据失败: {e}")
@@ -668,7 +741,7 @@ class StockMCPServer:
                 )
 
                 result = clean_dataframe_for_json(data)
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取社会融资数据失败: {e}")
@@ -697,7 +770,7 @@ class StockMCPServer:
                 )
 
                 result = clean_dataframe_for_json(data)
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取LPR数据失败: {e}")
@@ -726,7 +799,7 @@ class StockMCPServer:
                 for key, df in data.items():
                     result[key] = clean_dataframe_for_json(df)
 
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取经济周期数据失败: {e}")
@@ -753,7 +826,7 @@ class StockMCPServer:
                 for key, df in data.items():
                     result[key] = clean_dataframe_for_json(df)
 
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取货币政策数据失败: {e}")
@@ -780,7 +853,7 @@ class StockMCPServer:
                 for key, df in data.items():
                     result[key] = clean_dataframe_for_json(df)
 
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取通胀数据失败: {e}")
@@ -818,7 +891,7 @@ class StockMCPServer:
                         "同步完成后即可查询数据。"
                     )
 
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"获取最新宏观数据失败: {e}")
@@ -843,7 +916,7 @@ class StockMCPServer:
 
                 result = self.macro_service.manual_sync(indicator=indicator, force=force)
 
-                return json.dumps(result, ensure_ascii=False, indent=2)
+                return safe_json_response(result)
 
             except Exception as e:
                 logger.error(f"触发同步失败: {e}")
