@@ -323,7 +323,14 @@ class StockMCPServer:
                     return "❌ 行情服务当前不可用"
 
                 quote_dto = self.quote_service.get_stock_quote(symbol)
-                return json.dumps(quote_dto, ensure_ascii=False, indent=2)
+                # 将 DTO 对象转换为字典
+                if hasattr(quote_dto, '__dict__'):
+                    quote_dict = quote_dto.__dict__
+                elif hasattr(quote_dto, 'dict'):
+                    quote_dict = quote_dto.dict()
+                else:
+                    quote_dict = dict(quote_dto)
+                return json.dumps(quote_dict, ensure_ascii=False, indent=2, default=str)
 
             except Exception as e:
                 logger.error(f"获取股票行情数据失败: {e}")
@@ -347,7 +354,16 @@ class StockMCPServer:
                     return "❌ 股票代码列表不能为空"
 
                 quote_dtos = self.quote_service.get_stock_quotes_batch(symbols)
-                return json.dumps(quote_dtos, ensure_ascii=False, indent=2)
+                # 将 DTO 对象列表转换为字典列表
+                quote_dicts = []
+                for quote_dto in quote_dtos:
+                    if hasattr(quote_dto, '__dict__'):
+                        quote_dicts.append(quote_dto.__dict__)
+                    elif hasattr(quote_dto, 'dict'):
+                        quote_dicts.append(quote_dto.dict())
+                    else:
+                        quote_dicts.append(dict(quote_dto))
+                return json.dumps(quote_dicts, ensure_ascii=False, indent=2, default=str)
 
             except Exception as e:
                 logger.error(f"批量获取股票行情数据失败: {e}")
@@ -779,8 +795,20 @@ class StockMCPServer:
                 data = self.macro_service.get_latest_all_indicators(periods=periods)
 
                 result = {}
+                has_data = False
                 for key, df in data.items():
-                    result[key] = clean_dataframe_for_json(df)
+                    cleaned = clean_dataframe_for_json(df)
+                    result[key] = cleaned
+                    if cleaned:  # 检查是否有数据
+                        has_data = True
+
+                if not has_data:
+                    return (
+                        "⚠️ 宏观数据库为空，需要先同步数据。\n\n"
+                        "请使用 `trigger_macro_sync` 工具触发数据同步，例如：\n"
+                        "```\ntrigger_macro_sync(force=True)\n```\n\n"
+                        "同步完成后即可查询数据。"
+                    )
 
                 return json.dumps(result, ensure_ascii=False, indent=2)
 
