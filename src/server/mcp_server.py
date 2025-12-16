@@ -183,6 +183,7 @@ class StockMCPServer:
                 包含股票数据分析的详细报告
             """
             try:
+                symbol = str(symbol)  # 确保 symbol 是字符串类型
                 if self.market_service:
                     report = self.market_service.generate_market_report(
                         symbol, start_date, end_date
@@ -206,6 +207,7 @@ class StockMCPServer:
                 详细的基本面分析报告，包含估值指标、盈利能力、财务状况等
             """
             try:
+                symbol = str(symbol)  # 确保 symbol 是字符串类型
                 if self.fundamentals_service:
                     report = self.fundamentals_service.generate_fundamental_report(
                         symbol
@@ -230,6 +232,7 @@ class StockMCPServer:
                 相关新闻列表和情绪分析报告
             """
             try:
+                symbol = str(symbol)  # 确保 symbol 是字符串类型
                 service = self.news_service
                 if not service:
                     return "❌ 新闻服务当前不可用"
@@ -291,6 +294,7 @@ class StockMCPServer:
                 包含新闻数据和元数据的统一响应格式
             """
             try:
+                symbol = str(symbol)  # 确保 symbol 是字符串类型
                 if not self.news_service:
                     return "❌ 新闻服务当前不可用"
 
@@ -319,6 +323,7 @@ class StockMCPServer:
                 价格、涨跌幅、市盈率和市值等信息
             """
             try:
+                symbol = str(symbol)  # 确保 symbol 是字符串类型
                 if not self.quote_service:
                     return "❌ 行情服务当前不可用"
 
@@ -384,6 +389,7 @@ class StockMCPServer:
                 交易日列表
             """
             try:
+                symbol = str(symbol)  # 确保 symbol 是字符串类型
                 if not self.calendar_service:
                     return "❌ 日历服务当前不可用"
 
@@ -408,6 +414,7 @@ class StockMCPServer:
                 交易日检查结果
             """
             try:
+                symbol = str(symbol)  # 确保 symbol 是字符串类型
                 if not self.calendar_service:
                     return "❌ 日历服务当前不可用"
 
@@ -430,6 +437,7 @@ class StockMCPServer:
                 交易时间信息
             """
             try:
+                symbol = str(symbol)  # 确保 symbol 是字符串类型
                 if not self.calendar_service:
                     return "❌ 日历服务当前不可用"
 
