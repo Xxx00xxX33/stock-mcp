@@ -6,6 +6,7 @@
 import builtins
 import logging
 import sys
+import json
 from functools import partial
 
 # 导入本地服务
@@ -14,6 +15,9 @@ from .services.fundamentals_service import FundamentalsService
 from .services.market_service import MarketDataService
 from .services.new_service import get_news_service
 from .services.tavily_service import TavilyService
+from .services.quote_service import QuoteService
+from .services.calendar_service import CalendarService
+from .services.macro.macro_service import get_macro_service
 from .utils.redis_cache import get_redis_cache
 from ..config.settings import get_settings
 
@@ -34,6 +38,42 @@ try:
 except ImportError as e:
     logger.error(f"❌ FastMCP未安装: {e}")
     sys.exit(1)
+
+
+def clean_dataframe_for_json(df):
+    """清理DataFrame中的无效浮点数值，使其符合JSON标准"""
+    import pandas as pd
+    import numpy as np
+    
+    if df.empty:
+        return []
+
+    try:
+        df_cleaned = df.copy()
+        df_cleaned = df_cleaned.replace([np.inf, -np.inf], None)
+        df_cleaned = df_cleaned.where(pd.notna(df_cleaned), None)
+        records = df_cleaned.to_dict("records")
+
+        cleaned_records = []
+        for record in records:
+            cleaned_record = {}
+            for key, value in record.items():
+                if value is None:
+                    cleaned_record[key] = None
+                elif isinstance(value, (int, float)):
+                    if np.isnan(value) or np.isinf(value):
+                        cleaned_record[key] = None
+                    else:
+                        cleaned_record[key] = value
+                else:
+                    cleaned_record[key] = value
+            cleaned_records.append(cleaned_record)
+
+        return cleaned_records
+
+    except Exception as e:
+        logger.error(f"❌ 清理DataFrame失败: {e}")
+        return []
 
 
 class StockMCPServer:
@@ -80,6 +120,27 @@ class StockMCPServer:
             logger.error(f"❌ Tavily研究服务初始化失败: {e}")
             self.tavily_service = None
 
+        try:
+            self.quote_service = QuoteService()
+            logger.info("✅ 行情服务初始化成功")
+        except Exception as e:
+            logger.error(f"❌ 行情服务初始化失败: {e}")
+            self.quote_service = None
+
+        try:
+            self.calendar_service = CalendarService()
+            logger.info("✅ 日历服务初始化成功")
+        except Exception as e:
+            logger.error(f"❌ 日历服务初始化失败: {e}")
+            self.calendar_service = None
+
+        try:
+            self.macro_service = get_macro_service()
+            logger.info("✅ 宏观数据服务初始化成功")
+        except Exception as e:
+            logger.error(f"❌ 宏观数据服务初始化失败: {e}")
+            self.macro_service = None
+
     def create_mcp_server(self, port: int = None, host: str = "0.0.0.0") -> FastMCP:
         """创建并配置 FastMCP 服务器
 
@@ -104,6 +165,8 @@ class StockMCPServer:
 
     def _register_core_tools(self, mcp: FastMCP):
         """注册核心工具"""
+
+        # ==================== 股票行情工具 ====================
 
         @mcp.tool()
         async def get_stock_price_data(
@@ -171,14 +234,12 @@ class StockMCPServer:
                 if not service:
                     return "❌ 新闻服务当前不可用"
 
-                # 获取实时股票新闻
                 result = service.get_news_for_date(symbol, None, days_back)
 
                 if not result.get("success", False):
                     error_msg = result.get("error", "获取新闻失败")
                     return f"❌ 获取 {symbol} 新闻失败: {error_msg}"
 
-                # 格式化新闻报告
                 news_list = result.get("news", [])
                 if not news_list:
                     return f"📰 {symbol} 最近 {days_back} 天没有找到新闻"
@@ -189,13 +250,11 @@ class StockMCPServer:
                 report += f"📊 新闻总数: {result['total_count']}条\n"
                 report += f"🌐 市场: {result['market']}\n\n"
 
-                # 数据源统计
                 report += "## 📡 数据源统计\n"
                 for source, count in result.get("source_stats", {}).items():
                     report += f"- {source}: {count}条\n"
                 report += "\n"
 
-                # 显示新闻列表
                 report += "## 📰 新闻详情\n\n"
                 for i, news in enumerate(news_list[:20], 1):
                     report += f"### {i}. {news['title']}\n"
@@ -218,10 +277,632 @@ class StockMCPServer:
                 return f"❌ 获取 {symbol} 新闻失败: {str(e)}"
 
         @mcp.tool()
+        async def get_news_by_date(
+            symbol: str, target_date: str = None, days_before: int = 30
+        ) -> str:
+            """获取指定日期的股票新闻
+
+            Args:
+                symbol: 股票代码
+                target_date: 目标日期 (YYYY-MM-DD格式)，默认为当前日期
+                days_before: 向前查询的天数，默认30天
+
+            Returns:
+                包含新闻数据和元数据的统一响应格式
+            """
+            try:
+                if not self.news_service:
+                    return "❌ 新闻服务当前不可用"
+
+                result = self.news_service.get_news_for_date(
+                    symbol, target_date, days_before
+                )
+
+                if not result.get("success", False):
+                    error_msg = result.get("error", "获取新闻失败")
+                    return f"❌ 获取 {symbol} 新闻失败: {error_msg}"
+
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取指定日期新闻失败: {e}")
+                return f"❌ 获取 {symbol} 新闻失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_stock_quote(symbol: str) -> str:
+            """获取股票的实时或近实时行情数据
+
+            Args:
+                symbol: 股票代码
+
+            Returns:
+                价格、涨跌幅、市盈率和市值等信息
+            """
+            try:
+                if not self.quote_service:
+                    return "❌ 行情服务当前不可用"
+
+                quote_dto = self.quote_service.get_stock_quote(symbol)
+                return json.dumps(quote_dto, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取股票行情数据失败: {e}")
+                return f"❌ 获取 {symbol} 行情数据失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_stock_quotes(symbols: list) -> str:
+            """批量获取多个股票的实时或近实时行情数据
+
+            Args:
+                symbols: 股票代码列表，例如 ["AAPL", "TSLA", "000001"]
+
+            Returns:
+                包含多个股票的行情数据
+            """
+            try:
+                if not self.quote_service:
+                    return "❌ 行情服务当前不可用"
+
+                if not symbols:
+                    return "❌ 股票代码列表不能为空"
+
+                quote_dtos = self.quote_service.get_stock_quotes_batch(symbols)
+                return json.dumps(quote_dtos, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"批量获取股票行情数据失败: {e}")
+                return f"❌ 批量获取行情数据失败: {str(e)}"
+
+        # ==================== 日历工具 ====================
+
+        @mcp.tool()
+        async def get_trading_days(symbol: str, start_date: str, end_date: str) -> str:
+            """获取指定股票的交易日列表
+
+            Args:
+                symbol: 股票代码
+                start_date: 开始日期，格式YYYY-MM-DD
+                end_date: 结束日期，格式YYYY-MM-DD
+
+            Returns:
+                交易日列表
+            """
+            try:
+                if not self.calendar_service:
+                    return "❌ 日历服务当前不可用"
+
+                result = self.calendar_service.get_trading_days(
+                    symbol, start_date, end_date
+                )
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取交易日失败: {e}")
+                return f"❌ 获取 {symbol} 交易日失败: {str(e)}"
+
+        @mcp.tool()
+        async def check_trading_day(symbol: str, check_date: str) -> str:
+            """检查指定日期是否为交易日
+
+            Args:
+                symbol: 股票代码
+                check_date: 检查日期，格式YYYY-MM-DD
+
+            Returns:
+                交易日检查结果
+            """
+            try:
+                if not self.calendar_service:
+                    return "❌ 日历服务当前不可用"
+
+                result = self.calendar_service.is_trading_day(symbol, check_date)
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"检查交易日失败: {e}")
+                return f"❌ 检查 {symbol} 交易日失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_trading_hours(symbol: str, check_date: str) -> str:
+            """获取指定日期的交易时间信息
+
+            Args:
+                symbol: 股票代码
+                check_date: 检查日期，格式YYYY-MM-DD
+
+            Returns:
+                交易时间信息
+            """
+            try:
+                if not self.calendar_service:
+                    return "❌ 日历服务当前不可用"
+
+                result = self.calendar_service.get_trading_hours(symbol, check_date)
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取交易时间失败: {e}")
+                return f"❌ 获取 {symbol} 交易时间失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_supported_exchanges() -> str:
+            """获取支持的交易所列表
+
+            Returns:
+                支持的交易所列表
+            """
+            try:
+                if not self.calendar_service:
+                    return "❌ 日历服务当前不可用"
+
+                result = self.calendar_service.get_supported_exchanges()
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取交易所列表失败: {e}")
+                return f"❌ 获取交易所列表失败: {str(e)}"
+
+        # ==================== 宏观经济工具 ====================
+
+        @mcp.tool()
+        async def get_macro_dashboard() -> str:
+            """获取智能宏观数据仪表板
+
+            自动为不同指标设置最佳的默认期数：
+            - GDP: 最近4个季度 (1年)
+            - CPI/PPI: 最近12个月 (1年)
+            - PMI: 最近12个月 (1年)
+            - 货币供应量: 最近12个月 (1年)
+            - 社会融资: 最近12个月 (1年)
+            - LPR: 最近12期 (通常月度发布)
+
+            Returns:
+                包含所有主要宏观指标数据的统一响应
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                dashboard_data = self.macro_service.get_macro_dashboard_data()
+
+                result = {"data": {}, "metadata": dashboard_data["metadata"]}
+
+                for indicator, df in dashboard_data["data"].items():
+                    result["data"][indicator] = clean_dataframe_for_json(df)
+
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取智能宏观数据仪表板失败: {e}")
+                return f"❌ 获取宏观数据仪表板失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_gdp_data(
+            periods: int = None, start_quarter: str = None, end_quarter: str = None
+        ) -> str:
+            """获取GDP数据
+
+            Args:
+                periods: 获取最近N期数据
+                start_quarter: 开始季度，格式如 2024Q1
+                end_quarter: 结束季度，格式如 2024Q4
+
+            Returns:
+                GDP数据列表
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_gdp(
+                    periods=periods, start_quarter=start_quarter, end_quarter=end_quarter
+                )
+
+                result = clean_dataframe_for_json(data)
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取GDP数据失败: {e}")
+                return f"❌ 获取GDP数据失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_cpi_data(
+            periods: int = None, start_month: str = None, end_month: str = None
+        ) -> str:
+            """获取CPI数据
+
+            Args:
+                periods: 获取最近N期数据
+                start_month: 开始月份，格式如 2024-01
+                end_month: 结束月份，格式如 2024-12
+
+            Returns:
+                CPI数据列表
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_cpi(
+                    periods=periods, start_month=start_month, end_month=end_month
+                )
+
+                result = clean_dataframe_for_json(data)
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取CPI数据失败: {e}")
+                return f"❌ 获取CPI数据失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_ppi_data(
+            periods: int = None, start_month: str = None, end_month: str = None
+        ) -> str:
+            """获取PPI数据
+
+            Args:
+                periods: 获取最近N期数据
+                start_month: 开始月份，格式如 2024-01
+                end_month: 结束月份，格式如 2024-12
+
+            Returns:
+                PPI数据列表
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_ppi(
+                    periods=periods, start_month=start_month, end_month=end_month
+                )
+
+                result = clean_dataframe_for_json(data)
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取PPI数据失败: {e}")
+                return f"❌ 获取PPI数据失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_pmi_data(
+            periods: int = None, start_month: str = None, end_month: str = None
+        ) -> str:
+            """获取PMI数据
+
+            Args:
+                periods: 获取最近N期数据
+                start_month: 开始月份，格式如 2024-01
+                end_month: 结束月份，格式如 2024-12
+
+            Returns:
+                PMI数据列表
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_pmi(
+                    periods=periods, start_month=start_month, end_month=end_month
+                )
+
+                result = clean_dataframe_for_json(data)
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取PMI数据失败: {e}")
+                return f"❌ 获取PMI数据失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_money_supply_data(
+            periods: int = None, start_month: str = None, end_month: str = None
+        ) -> str:
+            """获取货币供应量数据
+
+            Args:
+                periods: 获取最近N期数据
+                start_month: 开始月份，格式如 2024-01
+                end_month: 结束月份，格式如 2024-12
+
+            Returns:
+                货币供应量数据列表
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_money_supply(
+                    periods=periods, start_month=start_month, end_month=end_month
+                )
+
+                result = clean_dataframe_for_json(data)
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取货币供应量数据失败: {e}")
+                return f"❌ 获取货币供应量数据失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_social_financing_data(
+            periods: int = None, start_month: str = None, end_month: str = None
+        ) -> str:
+            """获取社会融资数据
+
+            Args:
+                periods: 获取最近N期数据
+                start_month: 开始月份，格式如 2024-01
+                end_month: 结束月份，格式如 2024-12
+
+            Returns:
+                社会融资数据列表
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_social_financing(
+                    periods=periods, start_month=start_month, end_month=end_month
+                )
+
+                result = clean_dataframe_for_json(data)
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取社会融资数据失败: {e}")
+                return f"❌ 获取社会融资数据失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_lpr_data(
+            periods: int = None, start_date: str = None, end_date: str = None
+        ) -> str:
+            """获取LPR数据
+
+            Args:
+                periods: 获取最近N期数据
+                start_date: 开始日期，格式YYYY-MM-DD
+                end_date: 结束日期，格式YYYY-MM-DD
+
+            Returns:
+                LPR数据列表
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_lpr(
+                    periods=periods, start_date=start_date, end_date=end_date
+                )
+
+                result = clean_dataframe_for_json(data)
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取LPR数据失败: {e}")
+                return f"❌ 获取LPR数据失败: {str(e)}"
+
+        # ==================== 宏观数据组合工具 ====================
+
+        @mcp.tool()
+        async def get_economic_cycle_data(start: str, end: str) -> str:
+            """获取经济周期相关数据（GDP + PMI + CPI）
+
+            Args:
+                start: 开始日期，格式YYYY-MM-DD
+                end: 结束日期，格式YYYY-MM-DD
+
+            Returns:
+                经济周期相关数据
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_economic_cycle_data(start, end)
+
+                result = {}
+                for key, df in data.items():
+                    result[key] = clean_dataframe_for_json(df)
+
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取经济周期数据失败: {e}")
+                return f"❌ 获取经济周期数据失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_monetary_policy_data(start: str, end: str) -> str:
+            """获取货币政策相关数据（货币供应量 + 社融 + LPR）
+
+            Args:
+                start: 开始日期，格式YYYY-MM-DD
+                end: 结束日期，格式YYYY-MM-DD
+
+            Returns:
+                货币政策相关数据
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_monetary_policy_data(start, end)
+
+                result = {}
+                for key, df in data.items():
+                    result[key] = clean_dataframe_for_json(df)
+
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取货币政策数据失败: {e}")
+                return f"❌ 获取货币政策数据失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_inflation_data(start: str, end: str) -> str:
+            """获取通胀相关数据（CPI + PPI）
+
+            Args:
+                start: 开始日期，格式YYYY-MM-DD
+                end: 结束日期，格式YYYY-MM-DD
+
+            Returns:
+                通胀相关数据
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_inflation_data(start, end)
+
+                result = {}
+                for key, df in data.items():
+                    result[key] = clean_dataframe_for_json(df)
+
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取通胀数据失败: {e}")
+                return f"❌ 获取通胀数据失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_latest_macro_data(periods: int = 1) -> str:
+            """获取所有宏观指标的最新数据
+
+            Args:
+                periods: 获取最近N期数据，默认1期
+
+            Returns:
+                所有宏观指标的最新数据
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                data = self.macro_service.get_latest_all_indicators(periods=periods)
+
+                result = {}
+                for key, df in data.items():
+                    result[key] = clean_dataframe_for_json(df)
+
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取最新宏观数据失败: {e}")
+                return f"❌ 获取最新宏观数据失败: {str(e)}"
+
+        # ==================== 宏观数据同步管理工具 ====================
+
+        @mcp.tool()
+        async def trigger_macro_sync(indicator: str = None, force: bool = False) -> str:
+            """手动触发宏观数据同步
+
+            Args:
+                indicator: 指定要同步的指标，如 'gdp', 'cpi' 等，不指定则同步全部
+                force: 是否强制同步，默认False
+
+            Returns:
+                同步结果
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                result = self.macro_service.manual_sync(indicator=indicator, force=force)
+
+                return json.dumps(result, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"触发同步失败: {e}")
+                return f"❌ 触发同步失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_macro_sync_status() -> str:
+            """获取宏观数据同步状态
+
+            Returns:
+                同步状态信息
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                status = self.macro_service.get_sync_status()
+
+                return json.dumps(status, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取同步状态失败: {e}")
+                return f"❌ 获取同步状态失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_macro_service_health() -> str:
+            """获取宏观数据服务健康状态
+
+            Returns:
+                服务健康状态信息
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                health = self.macro_service.get_service_health()
+
+                return json.dumps(health, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取服务健康状态失败: {e}")
+                return f"❌ 获取服务健康状态失败: {str(e)}"
+
+        @mcp.tool()
+        async def clear_macro_cache(indicator: str = None) -> str:
+            """清除宏观数据缓存
+
+            Args:
+                indicator: 指定要清除的指标缓存，不指定则清除全部
+
+            Returns:
+                清除结果
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                self.macro_service.clear_cache(indicator=indicator)
+
+                return json.dumps(
+                    {"cleared": indicator or "all"},
+                    ensure_ascii=False,
+                    indent=2
+                )
+
+            except Exception as e:
+                logger.error(f"清除缓存失败: {e}")
+                return f"❌ 清除缓存失败: {str(e)}"
+
+        @mcp.tool()
+        async def get_macro_cache_stats() -> str:
+            """获取宏观数据缓存统计
+
+            Returns:
+                缓存统计信息
+            """
+            try:
+                if not self.macro_service:
+                    return "❌ 宏观数据服务当前不可用"
+
+                stats = self.macro_service.get_cache_stats()
+
+                return json.dumps(stats, ensure_ascii=False, indent=2)
+
+            except Exception as e:
+                logger.error(f"获取缓存统计失败: {e}")
+                return f"❌ 获取缓存统计失败: {str(e)}"
+
+        # ==================== 深度研究工具 ====================
+
+        @mcp.tool()
         async def perform_deep_research(
             topic: str,
             research_type: str = "general",
-            symbols: list[str] = None,
+            symbols: list = None,
         ) -> str:
             """对指定主题或公司进行深入的网络搜索和研究，返回一份总结报告。
             此工具用于探索性分析，与其它获取特定数据的工具形成互补。
@@ -261,7 +942,7 @@ class StockMCPServer:
                 return f"❌ 执行关于 '{topic}' 的深度研究时发生错误: {str(e)}"
 
     def _build_query(
-        self, topic: str, research_type: str, symbols: list[str] | None
+        self, topic: str, research_type: str, symbols: list = None
     ) -> str:
         """根据研究类型和参数构建更精确的Tavily查询语句"""
         if not symbols or research_type not in [
@@ -328,9 +1009,7 @@ async def run_mcp_server():
         logger.info("🚀 启动股票数据MCP服务器...")
         logger.info(f"服务器名称: {mcp.name}")
 
-        logger.info(
-            "✅ 已注册3个核心工具: get_stock_price_data, get_financial_report, get_latest_news"
-        )
+        logger.info("✅ 已注册25个工具")
 
         # 使用正确的 FastMCP 运行方法 (同步函数)
         mcp.run()
@@ -347,8 +1026,6 @@ if __name__ == "__main__":
 
     logger.info("🚀 启动股票数据MCP服务器...")
     logger.info(f"服务器名称: {mcp.name}")
-    logger.info(
-        "✅ 已注册3个核心工具: get_stock_price_data, get_financial_report, get_latest_news"
-    )
+    logger.info("✅ 已注册25个工具")
 
     mcp.run()
